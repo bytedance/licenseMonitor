@@ -668,7 +668,12 @@ licenseMonitor is an open source software for EDA software license information d
 
                     # For Total_License.
                     item = QTableWidgetItem()
-                    item.setData(Qt.DisplayRole, int(self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][license_feature]['issued']))
+
+                    if self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][license_feature]['issued'] == 'Uncounted':
+                        item.setData(Qt.DisplayRole, self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][license_feature]['issued'])
+                    else:
+                        item.setData(Qt.DisplayRole, int(self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][license_feature]['issued']))
+
                     self.feature_tab_table.setItem(row, 3, item)
 
                     # For In_Use_License.

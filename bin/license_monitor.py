@@ -87,6 +87,9 @@ class MainWindow(QMainWindow):
         self.db_dic = self.get_db_info()
         self.license_dic_second = 0
 
+        # Get administrator list.
+        self.administrator_list = config.administrators.split()
+
         # Get project related information.
         self.project_list = self.parse_project_list_file()
         self.project_list.append('others')
@@ -103,8 +106,10 @@ class MainWindow(QMainWindow):
             self.feature_tab_feature_line.setText(specified_feature)
             self.expires_tab_feature_line.setText(specified_feature)
             self.usage_tab_feature_line.setText(specified_feature)
-            self.utilization_tab_feature_line.setText(specified_feature)
-            self.cost_tab_feature_line.setText(specified_feature)
+
+            if USER in self.administrator_list:
+                self.utilization_tab_feature_line.setText(specified_feature)
+                self.cost_tab_feature_line.setText(specified_feature)
 
         # Pre-set user.
         if specified_user:
@@ -118,8 +123,10 @@ class MainWindow(QMainWindow):
                 self.filter_feature_tab_license_feature(get_license_info=False)
                 self.filter_expires_tab_license_feature(get_license_info=False)
                 self.filter_usage_tab_license_feature(get_license_info=False)
-                self.filter_utilization_tab_license_feature()
-                self.gen_cost_tab_table()
+
+                if USER in self.administrator_list:
+                    self.filter_utilization_tab_license_feature()
+                    self.gen_cost_tab_table()
 
             if specified_user and (not specified_feature):
                 self.filter_usage_tab_license_feature(get_license_info=False)
@@ -147,9 +154,7 @@ class MainWindow(QMainWindow):
         my_show_message.start()
 
         # Get self.license_dic.
-        administrator_list = config.administrators.split()
-
-        if config.LM_LICENSE_FILE and os.path.exists(config.LM_LICENSE_FILE) and config.show_configured_for_admin and (USER in administrator_list):
+        if config.LM_LICENSE_FILE and os.path.exists(config.LM_LICENSE_FILE) and config.show_configured_for_admin and (USER in self.administrator_list):
             os.environ['LM_LICENSE_FILE'] = ''
 
             with open(config.LM_LICENSE_FILE, 'r') as LLF:
@@ -324,16 +329,20 @@ class MainWindow(QMainWindow):
         self.feature_tab = QWidget()
         self.expires_tab = QWidget()
         self.usage_tab = QWidget()
-        self.utilization_tab = QWidget()
-        self.cost_tab = QWidget()
+
+        if USER in self.administrator_list:
+            self.utilization_tab = QWidget()
+            self.cost_tab = QWidget()
 
         # Add the sub-tabs into main Tab widget
         self.main_tab.addTab(self.server_tab, 'SERVER')
         self.main_tab.addTab(self.feature_tab, 'FEATURE')
         self.main_tab.addTab(self.expires_tab, 'EXPIRES')
         self.main_tab.addTab(self.usage_tab, 'USAGE')
-        self.main_tab.addTab(self.utilization_tab, 'UTILIZATION')
-        self.main_tab.addTab(self.cost_tab, 'COST')
+
+        if USER in self.administrator_list:
+            self.main_tab.addTab(self.utilization_tab, 'UTILIZATION')
+            self.main_tab.addTab(self.cost_tab, 'COST')
 
         # Get License information.
         self.get_license_dic()
@@ -343,8 +352,10 @@ class MainWindow(QMainWindow):
         self.gen_feature_tab()
         self.gen_expires_tab()
         self.gen_usage_tab()
-        self.gen_utilization_tab()
-        self.gen_cost_tab()
+
+        if USER in self.administrator_list:
+            self.gen_utilization_tab()
+            self.gen_cost_tab()
 
         # Show main window
         self.setWindowTitle('licenseMonitor')
@@ -360,9 +371,11 @@ class MainWindow(QMainWindow):
                    'FEATURE': self.feature_tab,
                    'EXPIRES': self.expires_tab,
                    'USAGE': self.usage_tab,
-                   'UTILIZATION': self.utilization_tab,
-                   'COST': self.cost_tab,
                   }
+
+        if USER in self.administrator_list:
+            tab_dic['UTILIZATION'] = self.utilization_tab,
+            tab_dic['COST'] = self.cost_tab,
 
         self.main_tab.setCurrentWidget(tab_dic[specified_tab])
 
@@ -410,8 +423,10 @@ class MainWindow(QMainWindow):
         self.filter_feature_tab_license_feature(get_license_info=False)
         self.filter_expires_tab_license_feature(get_license_info=False)
         self.filter_usage_tab_license_feature(get_license_info=False)
-        self.filter_utilization_tab_license_feature()
-        self.gen_cost_tab_table()
+
+        if USER in self.administrator_list:
+            self.filter_utilization_tab_license_feature()
+            self.gen_cost_tab_table()
 
     def periodic_fresh(self, state):
         """

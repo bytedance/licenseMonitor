@@ -19,7 +19,9 @@ from common import common_pyqt5
 from common import common_license
 
 os.environ['PYTHONUNBUFFERED'] = '1'
-VENDOR_LIST = ['arm', 'cadence', 'empyrean', 'keysight', 'magillem', 'mentor', 'NOC', 'synopsys', 'TSRAM', 'xilinx']
+
+# You can update below VENDOR_LIST based on your requirement.
+VENDOR_LIST = ['alterad', 'ansysldm', 'armldm', 'cdslmd', 'empyrean', 'imperasd', 'interrad', 'magillem', 'mgcld', 'saltd', 'snpsldm', 'verplex', 'xilinxd', 'xpdldm']
 
 
 def read_args():

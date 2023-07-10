@@ -51,7 +51,7 @@ def read_args():
             args.vendors.append(os.path.basename(license_file))
 
     # Check vendor valid or not.
-    valid_vendor_list = ['cadence', 'synopsys', 'mentor']
+    valid_vendor_list = ['cdslmd', 'snpslmd', 'mgcld']
 
     for vendor in args.vendors:
         if vendor not in valid_vendor_list:
@@ -86,9 +86,9 @@ class GetProductFeatureRelationship():
     def __init__(self):
         self.license_dic = {}
 
-    def parse_cadence_license_file(self, license_file):
+    def parse_cdslmd_license_file(self, license_file):
         """
-        Parse cadence license file, get product_id/product_name/feature information.
+        Parse cdslmd license file, get product_id/product_name/feature information.
         """
         product_id_compile = re.compile(r'^\s*#\s*Product\s+Id\s*:\s*(\S+?),.*$')
         product_name_compile = re.compile(r'^\s*#\s*Product\s+Name\s*:\s*(.+?)\s*$')
@@ -121,14 +121,14 @@ class GetProductFeatureRelationship():
 
         return (product_dic_list)
 
-    def parse_synopsys_license_file(self, license_file):
+    def parse_snpslmd_license_file(self, license_file):
         """
-        Parse synopsys license file, get product_id/product_name/feature information.
+        Parse snpslmd license file, get product_id/product_name/feature information.
         """
         product_compile = re.compile(r'^\s*#\s*Product\s*:.*$')
         separate_compile = re.compile(r'^\s*#\s*----.*$')
         product_id_name_compile = re.compile(r'^\s*#\s*(\S+?):\S+\s+(.+?)\s+0000.*$')
-        feature_compile = re.compile(r'^\s*(FEATURE|INCREMENT)\s+(\S+)\s+.*$')
+        feature_compile = re.compile(r'^\s*(FEATURE|PACKAGE|INCREMENT)\s+(\S+)\s+.*$')
         feature_id_compile = re.compile(r'^.*SN=RK:(.+?):.*$')
         feature = ''
         product_mark = 0
@@ -160,20 +160,22 @@ class GetProductFeatureRelationship():
                         if current_product_id == product_dic['product_id']:
                             if feature not in product_dic['feature']:
                                 product_dic_list[i]['feature'].append(feature)
+
                             find_mark = True
                             break
 
                     if not find_mark:
-                        print('*Warning*: Not find product_id for feature "' + str(feature) + '".')
+                        print('*Warning*: Not find product_id "' + str(current_product_id) + '" for feature "' + str(feature) + '".')
 
         return (product_dic_list)
 
-    def parse_mentor_license_file(self, license_file):
+    def parse_mgcld_license_file(self, license_file):
         """
-        Parse mentor license file, get product_id/product_name/feature information.
+        Parse mgcld license file, get product_id/product_name/feature information.
         """
-        product_id_name_compile = re.compile(r'^\s*#\s*(\d+)\s*(.+?)\s+\d+\s*$')
-        feature_compile = re.compile(r'^\s*#\s*(\S+)\s+(20\S+)\s+(\S+)\s+(\S+)\s+\d+\s*$')
+        product_id_name_compile = re.compile(r'^\s*#\s*(\d+)\s+(.+?)\s+(\d+)\s*$')
+        feature_compile1 = re.compile(r'^\s*#\s*(\S+)\s+(20\S+)\s+(\d+/\d+\d+)\s+(\d+/\d+/\d+)\s+(\d+)\s*$')
+        feature_compile2 = re.compile(r'^\s*#\s*(\S+)\s+(20\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s*$')
         product_dic = {}
         product_dic_list = []
 
@@ -188,8 +190,12 @@ class GetProductFeatureRelationship():
                     product_id = my_match.group(1)
                     product_name = my_match.group(2)
                     product_dic = {'product_id': product_id, 'product_name': product_name, 'feature': []}
-                elif feature_compile.match(line):
-                    my_match = feature_compile.match(line)
+                elif feature_compile1.match(line) or feature_compile2.match(line):
+                    if feature_compile1.match(line):
+                        my_match = feature_compile1.match(line)
+                    elif feature_compile2.match(line):
+                        my_match = feature_compile2.match(line)
+
                     feature = my_match.group(1)
                     product_dic.setdefault('feature', [])
                     product_dic['feature'].append(feature)
@@ -200,18 +206,14 @@ class GetProductFeatureRelationship():
         feature_dic = {}
 
         for product_dic in product_dic_list:
-            product_name_string = product_dic['product_name']
-            product_name_list = product_name_string.split()
-            product_name = '_'.join(product_name_list)
-            product_id = product_dic['product_id']
-            product_name_id = str(product_name) + ':' + str(product_id)
+            product_name = product_dic['product_name']
             feature_list = product_dic['feature']
 
             for feature in feature_list:
                 feature_dic.setdefault(feature, [])
 
-                if product_name_id not in feature_dic[feature]:
-                    feature_dic[feature].append(product_name_id)
+                if product_name not in feature_dic[feature]:
+                    feature_dic[feature].append(product_name)
 
         return (feature_dic)
 
@@ -224,18 +226,18 @@ class GetProductFeatureRelationship():
 
         feature_dic = {}
 
-        if vendor == 'cadence':
-            product_dic_list = self.parse_cadence_license_file(license_file)
+        if vendor == 'cdslmd':
+            product_dic_list = self.parse_cdslmd_license_file(license_file)
             feature_dic = self.switch_product_dic_list(product_dic_list)
-            self.license_dic.setdefault('cadence', feature_dic)
-        elif vendor == 'synopsys':
-            product_dic_list = self.parse_synopsys_license_file(license_file)
+            self.license_dic.setdefault('cdslmd', feature_dic)
+        elif vendor == 'snpslmd':
+            product_dic_list = self.parse_snpslmd_license_file(license_file)
             feature_dic = self.switch_product_dic_list(product_dic_list)
-            self.license_dic.setdefault('synopsys', feature_dic)
-        elif vendor == 'mentor':
-            product_dic_list = self.parse_mentor_license_file(license_file)
+            self.license_dic.setdefault('snpslmd', feature_dic)
+        elif vendor == 'mgcld':
+            product_dic_list = self.parse_mgcld_license_file(license_file)
             feature_dic = self.switch_product_dic_list(product_dic_list)
-            self.license_dic.setdefault('mentor', feature_dic)
+            self.license_dic.setdefault('mgcld', feature_dic)
 
         # Verify self.license_dic feature completeness.
         license_file_dic = common_license.parse_license_file(license_file)

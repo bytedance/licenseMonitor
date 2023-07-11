@@ -46,7 +46,7 @@ def read_args():
 
     parser.add_argument("-f", "--feature",
                         default='',
-                        help='Specify license feature which you want to see on "LICENSE/EXPIRES/USAGE/UTILIZATION/COST" tab.')
+                        help='Specify license feature which you want to see on "FEATURE/EXPIRES/USAGE/UTILIZATION/COST" tab.')
     parser.add_argument("-u", "--user",
                         default='',
                         help='Specify the user on "USAGE" tab.')

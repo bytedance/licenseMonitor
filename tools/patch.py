@@ -1,4 +1,3 @@
-#!/ic/software/tools/python3/3.8.8/bin/python3
 # -*- coding: utf-8 -*-
 ################################
 # File Name   : patch.py

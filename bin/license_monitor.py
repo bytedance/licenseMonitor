@@ -1379,6 +1379,7 @@ licenseMonitor is an open source software for EDA software license information d
         self.utilization_tab_frame0.setFrameShape(QFrame.Box)
 
         self.utilization_tab_table = QTableWidget(self.utilization_tab)
+        self.utilization_tab_table.itemClicked.connect(self.utilization_tab_table_click)
 
         self.utilization_tab_frame1 = QFrame(self.utilization_tab)
         self.utilization_tab_frame1.setFrameShadow(QFrame.Raised)
@@ -1742,6 +1743,19 @@ licenseMonitor is an open source software for EDA software license information d
 
                 self.utilization_tab_table.setItem(i, 2, item)
 
+    def utilization_tab_table_click(self, item=None):
+        """
+        If click feature name on self.utilization_tab_table, jump to FEATURE tab and show feature related information.
+        """
+        if item:
+            if item.column() == 0:
+                current_row = self.utilization_tab_table.currentRow()
+                feature = self.utilization_tab_table.item(current_row, 0).text().strip()
+
+                self.feature_tab_feature_line.setText(feature)
+                self.filter_feature_tab_license_feature(get_license_info=False)
+                self.main_tab.setCurrentWidget(self.feature_tab)
+
     def gen_utilization_tab_frame1(self):
         """
         Generate self.utilization_tab_frame1.
@@ -1835,6 +1849,7 @@ licenseMonitor is an open source software for EDA software license information d
         self.cost_tab_frame0.setFrameShape(QFrame.Box)
 
         self.cost_tab_table = QTableWidget(self.cost_tab)
+        self.cost_tab_table.itemClicked.connect(self.cost_tab_table_click)
 
         # Grid
         cost_tab_grid = QGridLayout()
@@ -2279,6 +2294,19 @@ licenseMonitor is an open source software for EDA software license information d
 
                         j += 1
                         self.cost_tab_table.setItem(i, j, item)
+
+    def cost_tab_table_click(self, item=None):
+        """
+        If click feature name on self.cost_tab_table, jump to FEATURE tab and show feature related information.
+        """
+        if item:
+            if item.column() == 0:
+                current_row = self.cost_tab_table.currentRow()
+                feature = self.cost_tab_table.item(current_row, 0).text().strip()
+
+                self.feature_tab_feature_line.setText(feature)
+                self.filter_feature_tab_license_feature(get_license_info=False)
+                self.main_tab.setCurrentWidget(self.feature_tab)
 # For COST TAB (end) #
 
     def close_event(self, QCloseEvent):

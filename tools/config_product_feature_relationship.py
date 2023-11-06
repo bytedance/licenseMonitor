@@ -6,74 +6,27 @@
 # Description :
 ################################
 import os
-import re
 import sys
-import argparse
-import copy
 import yaml
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QFrame, QGridLayout, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QFrame, QGridLayout, QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
 
 sys.path.insert(0, os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common_pyqt5
 from common import common_license
 
+CWD = os.getcwd()
 os.environ['PYTHONUNBUFFERED'] = '1'
-
-# You can update below VENDOR_LIST based on your requirement.
-VENDOR_LIST = ['alterad', 'ansysldm', 'armldm', 'cdslmd', 'empyrean', 'imperasd', 'interrad', 'magillem', 'mgcld', 'saltd', 'snpsldm', 'verplex', 'xilinxd', 'xpdldm']
-
-
-def read_args():
-    """
-    Read in arguments.
-    """
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-v', '--vendor',
-                        default='',
-                        choices=VENDOR_LIST,
-                        help='Specify vendor.')
-    parser.add_argument('-l', '--license_file',
-                        default='',
-                        help='Specify license file.')
-    parser.add_argument('-o', '--output_file',
-                        default='',
-                        help='Specify output file.')
-
-    args = parser.parse_args()
-
-    # Check license_file.
-    if args.license_file and (not os.path.exists(args.license_file)):
-        print('*Error*: "' + str(args.license_file) + '": No such file.')
-        sys.exit(1)
-
-    if args.output_file:
-        # Check output_file.
-        if os.path.exists(args.output_file):
-            print('*Error*: output file "' + str(args.output_file) + '" exists, please remove it first.')
-            sys.exit(1)
-
-        # Check output_dir.
-        output_dir = os.path.dirname(args.output_file)
-
-        if not os.path.exists(output_dir):
-            print('*Error*: "' + str(output_dir) + '": No such output file directory.')
-            sys.exit(1)
-
-    return (args.vendor, args.license_file, args.output_file)
 
 
 class MainWindow(QMainWindow):
     """
     Main window of config_product_feature_relationship.
+    Below are some vendor daemon names.
+    ['alterad', 'ansysldm', 'armldm', 'cdslmd', 'empyrean', 'imperasd', 'interrad', 'magillem', 'mgcld', 'saltd', 'snpsldm', 'verplex', 'xilinxd', 'xpdldm']
     """
-    def __init__(self, vendor, license_file, output_file):
+    def __init__(self):
         super().__init__()
-        self.vendor = vendor
-        self.license_file = license_file
-        self.output_file = output_file
-
         self.init_ui()
 
     def init_ui(self):
@@ -110,7 +63,6 @@ class MainWindow(QMainWindow):
 
         # Generate main_table
         self.gen_select_frame()
-        self.update_license_table()
         self.gen_output_frame()
 
         # Show main window
@@ -119,45 +71,28 @@ class MainWindow(QMainWindow):
         common_pyqt5.center_window(self)
 
     def gen_select_frame(self):
-        # self.select_frame
+        # Vendor
         vendor_label = QLabel(self.select_frame)
         vendor_label.setStyleSheet("font-weight: bold;")
-        vendor_label.setText('* Vendor')
+        vendor_label.setText('* Vendor Daemon')
 
-        self.vendor_combo = QComboBox(self.select_frame)
+        self.vendor_line = QLineEdit()
 
-        # Init self.vendor_combo.
-        if not self.vendor:
-            self.set_vendor_combo(VENDOR_LIST)
-        else:
-            vendor_list = copy.deepcopy(VENDOR_LIST)
-            vendor_list.remove(self.vendor)
-            vendor_list.insert(0, self.vendor)
-            self.set_vendor_combo(vendor_list)
-
-        self.vendor_combo.activated.connect(self.vendor_combo_changed)
-
+        # License File
         license_file_label = QLabel(self.select_frame)
         license_file_label.setStyleSheet("font-weight: bold;")
         license_file_label.setText('* License File')
 
         self.license_file_line = QLineEdit()
 
-        # Init self.license_file_line.
-        if self.license_file:
-            self.license_file_line.setText(self.license_file)
-        else:
-            self.set_default_license_file()
-
+        # Yaml File
         yaml_file_label = QLabel(self.select_frame)
         yaml_file_label.setStyleSheet("font-weight: bold;")
         yaml_file_label.setText('Yaml File')
 
         self.yaml_file_line = QLineEdit()
 
-        # Init self.yaml_file_line.
-        self.set_default_yaml_file()
-
+        # Update Button
         update_button = QPushButton('Update', self.select_frame)
         update_button.setFixedHeight(90)
         update_button.clicked.connect(self.update_license_table)
@@ -166,7 +101,7 @@ class MainWindow(QMainWindow):
         select_frame_grid = QGridLayout()
 
         select_frame_grid.addWidget(vendor_label, 0, 0)
-        select_frame_grid.addWidget(self.vendor_combo, 0, 1)
+        select_frame_grid.addWidget(self.vendor_line, 0, 1)
         select_frame_grid.addWidget(license_file_label, 1, 0)
         select_frame_grid.addWidget(self.license_file_line, 1, 1)
         select_frame_grid.addWidget(yaml_file_label, 2, 0)
@@ -179,72 +114,45 @@ class MainWindow(QMainWindow):
 
         self.select_frame.setLayout(select_frame_grid)
 
-    def set_vendor_combo(self, vendor_list):
-        """
-        Set (initialize) self.vendor_conbo.
-        """
-        self.vendor_combo.clear()
-
-        for vendor in vendor_list:
-            self.vendor_combo.addItem(vendor)
-
-    def set_default_license_file(self):
-        self.license_file_line.setText('')
-        vendor = self.vendor_combo.currentText().strip()
-
-        if vendor:
-            license_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/lic/' + str(vendor)
-
-            if os.path.exists(license_file):
-                self.license_file_line.setText(license_file)
-
-    def set_default_yaml_file(self):
-        self.yaml_file_line.setText('')
-        vendor = self.vendor_combo.currentText().strip()
-
-        if vendor:
-            yaml_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/product_feature_relationship/' + str(vendor) + '.yaml'
-
-            if os.path.exists(yaml_file):
-                self.yaml_file_line.setText(yaml_file)
-
-    def set_default_output_file(self):
-        self.output_line.setText('')
-        vendor = self.vendor_combo.currentText().strip()
-
-        if vendor:
-            cwd = os.getcwd()
-            output_file = str(cwd) + '/' + str(vendor) + '.yaml'
-
-            if not os.path.exists(output_file):
-                self.output_line.setText(output_file)
-
-    def vendor_combo_changed(self):
-        """
-        If self.vendor_combo is changed, update self.license_file_line/self.yaml_file_line/self.output_line.
-        """
-        self.set_default_license_file()
-        self.set_default_yaml_file()
-        self.set_default_output_file()
-        self.update_license_table()
-
     def get_license_file_dic(self):
         license_file_dic = {}
         license_file = self.license_file_line.text().strip()
 
         if license_file:
             if not os.path.exists(license_file):
-                print('*Error*: "' + str(license_file) + '": No such file.')
+                warning_message = '*Warning*: "' + str(license_file) + '": No such file.'
+                QMessageBox.warning(self, 'Warning', warning_message)
             else:
+                print('>>> Parse license file "' + str(license_file) + '".')
                 license_file_dic = common_license.parse_license_file(license_file)
 
         return (license_file_dic)
 
     def update_license_table(self):
+        # Pre-check
+        vendor = self.vendor_line.text().strip()
+
+        if not vendor:
+            warning_message = '*Warning*: Required argument "Vendor Daemon" is not specified.'
+            QMessageBox.warning(self, 'Warning', warning_message)
+            return
+
+        license_file = self.license_file_line.text().strip()
+
+        if not license_file:
+            warning_message = '*Warning*: Required argument "License File" is not specified.'
+            QMessageBox.warning(self, 'Warning', warning_message)
+            return
+        elif not os.path.exists(license_file):
+            warning_message = '*Warning*: "' + str(license_file) + '": No such file.'
+            QMessageBox.warning(self, 'Warning', warning_message)
+            return
+
+        # Generate self.license_table.
         self.license_table.setShowGrid(True)
         self.license_table.setColumnCount(0)
         self.license_table.setColumnCount(2)
-        self.license_table.setHorizontalHeaderLabels(['Feature', 'Product_Name:Product_Id'])
+        self.license_table.setHorizontalHeaderLabels(['Feature', 'Product'])
 
         # Set column width.
         self.license_table.setColumnWidth(0, 250)
@@ -265,12 +173,18 @@ class MainWindow(QMainWindow):
 
         # Get product_feature_relationship_dic.
         product_feature_relationship_dic = {}
-        vendor = self.vendor_combo.currentText().strip()
         yaml_file = self.yaml_file_line.text().strip()
 
         if yaml_file and os.path.exists(yaml_file):
-            product_feature_relationship_dic = yaml.load(open(yaml_file), Loader=yaml.FullLoader)
-            product_feature_relationship_dic = product_feature_relationship_dic[vendor]
+            print('>>> Load yaml file "' + str(yaml_file) + '".')
+
+            yaml_dic = yaml.load(open(yaml_file), Loader=yaml.FullLoader)
+
+            if vendor in yaml_dic:
+                product_feature_relationship_dic = yaml_dic[vendor]
+            else:
+                warning_message = '*Warning*: Not find vendor daemon "' + str(vendor) + '" on "' + str(yaml_file) + '".'
+                QMessageBox.warning(self, 'Warning', warning_message)
 
         # Fill self.license_table.
         if feature_list:
@@ -285,11 +199,11 @@ class MainWindow(QMainWindow):
                 item.setText(feature)
                 self.license_table.setItem(row, 0, item)
 
-                # Product_Name:Product_Id item.
+                # Product item.
                 if product_feature_relationship_dic and (feature in product_feature_relationship_dic):
-                    product_name_id = '  '.join(product_feature_relationship_dic[feature])
+                    product = '#'.join(product_feature_relationship_dic[feature])
                     item = QTableWidgetItem()
-                    item.setText(product_name_id)
+                    item.setText(product)
                     self.license_table.setItem(row, 1, item)
 
     def gen_output_frame(self):
@@ -299,12 +213,8 @@ class MainWindow(QMainWindow):
         output_label.setText('Output : ')
 
         self.output_line = QLineEdit()
-
-        # Init self.output_line.
-        if self.output_file:
-            self.output_line.setText(self.output_file)
-        else:
-            self.set_default_output_file()
+        default_output_file = str(CWD) + '/product_feature.yaml'
+        self.output_line.setText(default_output_file)
 
         gen_button = QPushButton('Gen', self.output_frame)
         gen_button.clicked.connect(self.gen_output_file)
@@ -328,35 +238,38 @@ class MainWindow(QMainWindow):
         output_dir = os.path.dirname(output_file)
 
         if not os.path.exists(output_dir):
-            print('*Error*: "' + str(output_dir) + '": No such output file directory.')
+            error_message = '*Error*: "' + str(output_dir) + '": No such output file directory.'
+            QMessageBox.critical(self, 'Error', error_message)
             return
 
         # Generate product_feature_relationship_dic.
-        vendor = self.vendor_combo.currentText().strip()
+        vendor = self.vendor_line.text().strip()
         product_feature_relationship_dic = {vendor: {}}
 
         for row in range(self.license_table.rowCount()):
             feature = self.license_table.item(row, 0).text().strip()
-            product_name_id_list = []
+            product_list = []
 
             if self.license_table.item(row, 1):
-                product_name_id_list = self.license_table.item(row, 1).text().strip().split()
+                orig_product_list = self.license_table.item(row, 1).text().strip().split('#')
+
+                for product in orig_product_list:
+                    product = product.strip()
+
+                    if product and (product not in product_list):
+                        product_list.append(product)
 
             if feature:
                 if feature not in product_feature_relationship_dic[vendor]:
-                    if product_name_id_list:
-                        for product_name_id in product_name_id_list:
-                            if not re.match(r'^\S+:\S+$', product_name_id):
-                                print('*Warning*: "' + str(product_name_id) + '": invalid Product_Name:Product_Id setting.')
-
-                        product_feature_relationship_dic[vendor][feature] = product_name_id_list
+                    if product_list:
+                        product_feature_relationship_dic[vendor][feature] = product_list
                     else:
-                        print('*Warning*: "' + str(feature) + '": empty Product_Name:Product_Id.')
+                        print('*Warning*: "' + str(feature) + '": Not find related product setting.')
                 else:
-                    print('*Warning*: "' + str(feature) + '": repeated feature.')
+                    print('*Warning*: "' + str(feature) + '": Repeated feature.')
 
-        # Write self.output_file.
-        print('Write output file "' + str(output_file) + '".')
+        # Write output_file.
+        print('>>> Write output file "' + str(output_file) + '".')
 
         with open(output_file, 'w', encoding='utf-8') as OF:
             yaml.dump(product_feature_relationship_dic, OF)
@@ -366,9 +279,8 @@ class MainWindow(QMainWindow):
 # Main Process #
 ################
 def main():
-    (vendor, license_file, output_file) = read_args()
     app = QApplication(sys.argv)
-    mw = MainWindow(vendor, license_file, output_file)
+    mw = MainWindow()
     mw.show()
     sys.exit(app.exec_())
 

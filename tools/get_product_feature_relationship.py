@@ -12,6 +12,7 @@ import argparse
 import yaml
 
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
+from common import common
 from common import common_license
 
 os.environ['PYTHONUNBUFFERED'] = '1'
@@ -42,7 +43,7 @@ def read_args():
     # Check license file exists or not.
     for license_file in args.license_files:
         if not os.path.exists(license_file):
-            print('*Error*: "' + str(license_file) + '": No such license file.')
+            common.print_error('*Error*: "' + str(license_file) + '": No such license file.')
             sys.exit(1)
 
     # Set default venodr setting.
@@ -55,7 +56,7 @@ def read_args():
 
     for vendor in args.vendors:
         if vendor not in valid_vendor_list:
-            print('*Error*: "' + str(vendor) + '": invalid vendor.')
+            common.print_error('*Error*: "' + str(vendor) + '": invalid vendor.')
             sys.exit(1)
 
     # Set default output file setting.
@@ -63,7 +64,7 @@ def read_args():
         if len(args.license_files) == 1:
             args.output_file = str(CWD) + '/' + str(os.path.basename(args.license_files[0])) + '.yaml'
         else:
-            print('*Error*: No output file is specified.')
+            common.print_error('*Error*: No output file is specified.')
             sys.exit(1)
 
     # Check output directory exists or not.
@@ -71,12 +72,12 @@ def read_args():
     output_file_dir = os.path.dirname(args.output_file)
 
     if not os.path.exists(output_file_dir):
-        print('*Error*: "' + str(output_file_dir) + '": No such output file directory.')
+        common.print_error('*Error*: "' + str(output_file_dir) + '": No such output file directory.')
         sys.exit(1)
 
     # Check output file exists or not.
     if os.path.exists(args.output_file):
-        print('*Error*: "' + str(args.output_file) + '": output file exists, please remove it first.')
+        common.print_error('*Error*: "' + str(args.output_file) + '": output file exists, please remove it first.')
         sys.exit(1)
 
     return (args.license_files, args.vendors, args.output_file)
@@ -125,11 +126,11 @@ class GetProductFeatureRelationship():
         """
         Parse snpslmd license file, get product_id/product_name/feature information.
         """
-        product_compile = re.compile(r'^\s*#\s*Product\s*:.*$')
-        separate_compile = re.compile(r'^\s*#\s*----.*$')
-        product_id_name_compile = re.compile(r'^\s*#\s*(\S+?):\S+\s+(.+?)\s+0000.*$')
+        product_compile = re.compile(r'^\s*#\S*\s*Product\s*:.*$')
+        separate_compile = re.compile(r'^\s*#\S*\s*----.*$')
+        product_id_name_compile = re.compile(r'^\s*#\S*\s*(\S+?):\S+\s+(.+?)\s+0000.*$')
         feature_compile = re.compile(r'^\s*(FEATURE|PACKAGE|INCREMENT)\s+(\S+)\s+.*$')
-        feature_id_compile = re.compile(r'^.*SN=RK:(.+?):.*$')
+        feature_id_compile = re.compile(r'^\s*[^#].*SN=RK:(.+?):.*$')
         feature = ''
         product_mark = 0
         product_dic_list = []
@@ -165,7 +166,7 @@ class GetProductFeatureRelationship():
                             break
 
                     if not find_mark:
-                        print('*Warning*: Not find product_id "' + str(current_product_id) + '" for feature "' + str(feature) + '".')
+                        common.print_warning('*Warning*: Not find product_id "' + str(current_product_id) + '" for feature "' + str(feature) + '".')
 
         return (product_dic_list)
 
@@ -203,6 +204,9 @@ class GetProductFeatureRelationship():
         return (product_dic_list)
 
     def switch_product_dic_list(self, product_dic_list):
+        """
+        Switch product_dic_list to feature_dic, to get feature-product relationship with dictory.
+        """
         feature_dic = {}
 
         for product_dic in product_dic_list:
@@ -254,7 +258,7 @@ class GetProductFeatureRelationship():
         # Verify product_feature_list and liense_file_feature_list.
         for feature in license_file_feature_list:
             if feature not in feature_dic.keys():
-                print('*Warning*: No product_id/product_name information for feature "' + str(feature) + '".')
+                common.print_warning('*Warning*: No product_id/product_name information for feature "' + str(feature) + '".')
 
     def write_output_file(self, output_file, license_dic={}):
         """

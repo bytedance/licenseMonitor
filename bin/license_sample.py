@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import time
+import shutil
 import datetime
 import argparse
 from multiprocessing import Process
@@ -65,21 +66,29 @@ class Sampling:
         self.sample_date = datetime.datetime.today().strftime('%Y%m%d')
         self.sample_time = datetime.datetime.today().strftime('%Y%m%d_%H%M%S')
 
-        # For database path.
-        self.db_path = config.db_path
-
         # Get self.license_dic.
         print('>>> Sampling license usage information ...')
 
-        if config.LM_LICENSE_FILE and os.path.exists(config.LM_LICENSE_FILE):
+        LM_LICENSE_FILE_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/LM_LICENSE_FILE'
+
+        if os.path.exists(LM_LICENSE_FILE_file):
             os.environ['LM_LICENSE_FILE'] = ''
 
-            with open(config.LM_LICENSE_FILE, 'r') as LLF:
+            with open(LM_LICENSE_FILE_file, 'r') as LLF:
                 for line in LLF.readlines():
                     line = line.strip()
 
                     if (not re.match(r'^\s*$', line)) and (not re.match(r'^\s*#.*$', line)):
-                        os.environ['LM_LICENSE_FILE'] = str(os.environ['LM_LICENSE_FILE']) + ':' + str(line)
+                        if os.environ['LM_LICENSE_FILE']:
+                            os.environ['LM_LICENSE_FILE'] = str(os.environ['LM_LICENSE_FILE']) + ':' + str(line)
+                        else:
+                            os.environ['LM_LICENSE_FILE'] = str(line)
+
+        if not hasattr(config, 'lmstat_path'):
+            config.lmstat_path = ''
+
+        if not hasattr(config, 'lmstat_bsub_command'):
+            config.lmstat_bsub_command = ''
 
         my_get_license_info = common_license.GetLicenseInfo(lmstat_path=config.lmstat_path, bsub_command=config.lmstat_bsub_command)
         self.license_dic = my_get_license_info.get_license_info()
@@ -98,6 +107,59 @@ class Sampling:
                 if not re.search('File exists', error):
                     sys.exit(1)
 
+    def copy_file(self, source_file, target_dir):
+        """
+        Copy source_file into target_dir.
+        """
+        try:
+            print('    Copy "' + str(source_file) + '" into directory "' + str(target_dir) + '".')
+            shutil.copy(source_file, target_dir)
+        except Exception as warning:
+            common.print_warning('*Warning*: Failed on copying "' + str(source_file) + '" into directory "' + str(target_dir) + '".')
+            common.print_warning('           ' + str(warning))
+
+    def detect_project_setting(self):
+        """
+        Detect config/project/* and save new update into config.db_path/project_setting.
+        """
+        print('>>> Detect project setting ...')
+
+        project_list_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list'
+        project_submit_host_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_submit_host'
+        project_execute_host_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_execute_host'
+        project_user_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_user'
+
+        # Get project_setting_dic.
+        copy_mark = False
+        project_setting_db_path = str(config.db_path) + '/project_setting'
+        self.create_db_path(project_setting_db_path)
+        project_setting_dic = common_license.parse_project_setting_db_path(project_setting_db_path)
+
+        if not project_setting_dic:
+            copy_mark = True
+        else:
+            create_time_list = list(os.listdir(project_setting_db_path))
+            latest_create_time = create_time_list[-1]
+
+            # Get project_list/project_submit_host/project_execute_host/project_user content on config directory.
+            config_project_list = common_license.parse_project_list_file(project_list_file)
+            config_project_submit_host_dic = common_license.parse_project_proportion_file(project_submit_host_file, config_project_list)
+            config_project_execute_host_dic = common_license.parse_project_proportion_file(project_execute_host_file, config_project_list)
+            config_project_user_dic = common_license.parse_project_proportion_file(project_user_file, config_project_list)
+
+            # Compare latest db_path setting and current config setting.
+            if (project_setting_dic[latest_create_time]['project_list'] != config_project_list) or (project_setting_dic[latest_create_time]['project_submit_host'] != config_project_submit_host_dic) or (project_setting_dic[latest_create_time]['project_execute_host'] != config_project_execute_host_dic) or (project_setting_dic[latest_create_time]['project_user'] != config_project_user_dic):
+                copy_mark = True
+
+        if copy_mark:
+            current_time = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
+            current_project_setting_db_path = str(project_setting_db_path) + '/' + str(current_time)
+            self.create_db_path(current_project_setting_db_path)
+            self.copy_file(project_list_file, current_project_setting_db_path)
+            self.copy_file(project_execute_host_file, current_project_setting_db_path)
+            self.copy_file(project_submit_host_file, current_project_setting_db_path)
+            self.copy_file(project_user_file, current_project_setting_db_path)
+
     def sample_usage_info(self):
         """
         Sample license feature usage info and save it into sqlite db.
@@ -106,7 +168,7 @@ class Sampling:
 
         for license_server in self.license_dic.keys():
             for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                db_path = str(self.db_path) + '/' + str(license_server) + '/' + str(vendor_daemon)
+                db_path = str(config.db_path) + '/license_server/' + str(license_server) + '/' + str(vendor_daemon)
 
                 self.create_db_path(db_path)
 
@@ -176,7 +238,7 @@ class Sampling:
 
         for license_server in self.license_dic.keys():
             for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                db_path = str(self.db_path) + '/' + str(license_server) + '/' + str(vendor_daemon)
+                db_path = str(config.db_path) + '/license_server/' + str(license_server) + '/' + str(vendor_daemon)
 
                 self.create_db_path(db_path)
 
@@ -284,7 +346,7 @@ class Sampling:
 
         for license_server in self.license_dic.keys():
             for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                utilization_day_db_file = str(self.db_path) + '/' + str(license_server) + '/' + str(vendor_daemon) + '/utilization_day.db'
+                utilization_day_db_file = str(config.db_path) + '/license_server/' + str(license_server) + '/' + str(vendor_daemon) + '/utilization_day.db'
                 (result, utilization_day_db_conn) = common_sqlite3.connect_db_file(utilization_day_db_file, mode='write')
 
                 if result == 'passed':
@@ -353,7 +415,7 @@ class Sampling:
             if license_server == specified_license_server:
                 for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
                     if vendor_daemon == specified_vendor_daemon:
-                        utilization_db_file = str(self.db_path) + '/' + str(license_server) + '/' + str(vendor_daemon) + '/utilization.db'
+                        utilization_db_file = str(config.db_path) + '/license_server/' + str(license_server) + '/' + str(vendor_daemon) + '/utilization.db'
 
                         if os.path.exists(utilization_db_file):
                             (result, utilization_db_conn) = common_sqlite3.connect_db_file(utilization_db_file, mode='read')
@@ -394,15 +456,19 @@ class Sampling:
         return utilization_day_dic
 
     def sampling(self):
-        if self.usage_sampling:
-            p = Process(target=self.sample_usage_info)
-            p.start()
+        if hasattr(config, 'db_path') and config.db_path:
+            if self.usage_sampling:
+                p = Process(target=self.sample_usage_info)
+                p.start()
 
-        if self.utilization_sampling:
-            p = Process(target=self.sample_utilization_info)
-            p.start()
+            if self.utilization_sampling:
+                p = Process(target=self.sample_utilization_info)
+                p.start()
 
-        p.join()
+            p.join()
+        else:
+            common.print_warning('*Error*: No "db_path" is specified on config/config.py.')
+            sys.exit(1)
 
 
 ################
@@ -411,6 +477,7 @@ class Sampling:
 def main():
     (usage, utilization) = read_args()
     my_sampling = Sampling(usage, utilization)
+    my_sampling.detect_project_setting()
     my_sampling.sampling()
 
 

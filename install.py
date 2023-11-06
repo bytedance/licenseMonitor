@@ -1,15 +1,17 @@
 import os
 import sys
 import stat
+import getpass
 
 CWD = os.getcwd()
+USER = getpass.getuser()
 PYTHON_PATH = os.path.dirname(os.path.abspath(sys.executable))
 
 
 def check_python_version():
     """
     Check python version.
-    python3 is required, anaconda3 is better.
+    python3.8.8 is required, anaconda3-2021.05 is better.
     """
     print('>>> Check python version.')
 
@@ -28,13 +30,14 @@ Current python is Python {}.{}.
     else:
         print('    Required python version : ' + str(required_python))
         print('    Current  python version : ' + str(current_python))
+        print('')
 
 
 def gen_shell_tools():
     """
     Generate shell scripts under <LICENSE_MONITOR_INSTALL_PATH>/tools.
     """
-    tool_list = ['bin/license_monitor', 'bin/license_sample', 'tools/config_product_feature_relationship', 'tools/get_product_feature_relationship', 'tools/patch']
+    tool_list = ['bin/license_monitor', 'bin/license_sample', 'tools/config_product_feature_relationship', 'tools/gen_LM_LICENSE_FILE', 'tools/get_product_feature_relationship', 'tools/patch']
 
     for tool_name in tool_list:
         tool = str(CWD) + '/' + str(tool_name)
@@ -43,7 +46,6 @@ def gen_shell_tools():
         if 'LD_LIBRARY_PATH' in os.environ:
             ld_library_path_setting = str(ld_library_path_setting) + str(os.environ['LD_LIBRARY_PATH'])
 
-        print('')
         print('>>> Generate script "' + str(tool) + '".')
 
         try:
@@ -76,58 +78,49 @@ def gen_config_file():
     lmstat_path = str(CWD) + '/tools/lmstat'
     db_path = str(CWD) + '/db'
     lm_license_file = str(CWD) + '/config/LM_LICENSE_FILE'
-    product_feature_file = str(CWD) + '/config/product_feature.yaml'
-    project_list_file = str(CWD) + '/config/project_list'
-    project_submit_host_file = str(CWD) + '/config/project_submit_host'
-    project_execute_host_file = str(CWD) + '/config/project_execute_host'
-    project_user_file = str(CWD) + '/config/project_user'
+    product_feature_file = str(CWD) + '/config/product_feature/product_feature.yaml'
+    project_list_file = str(CWD) + '/config/project/project_list'
+    project_submit_host_file = str(CWD) + '/config/project/project_submit_host'
+    project_execute_host_file = str(CWD) + '/config/project/project_execute_host'
+    project_user_file = str(CWD) + '/config/project/project_user'
+    utilization_white_feature_file = str(CWD) + '/config/utilization/utilization_white_feature'
+    utilization_black_feature_file = str(CWD) + '/config/utilization/utilization_black_feature'
+    utilization_white_product_file = str(CWD) + '/config/utilization/utilization_white_product'
+    utilization_black_product_file = str(CWD) + '/config/utilization/utilization_black_product'
+    cost_white_feature_file = str(CWD) + '/config/cost/cost_white_feature'
+    cost_black_feature_file = str(CWD) + '/config/cost/cost_black_feature'
+    cost_white_product_file = str(CWD) + '/config/cost/cost_white_product'
+    cost_black_product_file = str(CWD) + '/config/cost/cost_black_product'
 
     # Generate config_file.
-    print('')
     print('>>> Generate config file "' + str(config_file) + '".')
 
     if os.path.exists(config_file):
-        print('*Warning*: config file "' + str(config_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(config_file) + '" already exists, will not update it.')
     else:
         try:
             with open(config_file, 'w') as CF:
                 CF.write('''# Specify EDA license administrators.
-administrators = ""
+administrators = "''' + str(USER) + '''"
 
 # Specify lmstat path, example "/eda/synopsys/scl/2021.03/linux64/bin/lmstat".
 lmstat_path = "''' + str(lmstat_path) + '''"
 
 # Specify lmstat bsub command, example "bsub -q normal -Is".
-lmstat_bsub_command = "bsub -q normal -Is"
+lmstat_bsub_command = ""
 
 # Specify the database directory where to save sample data.
 db_path = "''' + str(db_path) + '''"
-
-# Specify LM_LICENSE_FILE file path (with license servers setting).
-LM_LICENSE_FILE = "''' + str(lm_license_file) + '''"
-
-# Specify EDA license product & feature relationship file, you can get the file with "tools/get_product_feature_relationship".
-product_feature_file = "''' + str(product_feature_file) + '''"
-
-# Specify project(s) file.
-project_list_file = "''' + str(project_list_file) + '''"
-
-# Specify project & submit_host relationship file.
-project_submit_host_file = "''' + str(project_submit_host_file) + '''"
-
-# Specify project & execute_host relationship file.
-project_execute_host_file = "''' + str(project_execute_host_file) + '''"
-
-# Specify project & user relationship file.
-project_user_file = "''' + str(project_user_file) + '''"
 
 # Specify which are the primary factors when getting project information.
 # It could be one or serveral items between "user/execute_host/submit_host".
 project_primary_factors = "user  execute_host  submit_host"
 
-# Set configured LM_LICENSE_FILE for administrators.
-# If False, will get LM_LICENSE_FILE from current terminal.
-show_configured_for_admin = True
+# Enable "others" project on COST tab, so cost can always be shared.
+enable_cost_others_project = True
+
+# Max record number when searching license log.
+max_record_num = 1000
 
 # The time interval to fresh license information automatically, unit is "second", default is 300 seconds.
 fresh_interval = 300
@@ -138,12 +131,28 @@ fresh_interval = 300
             print('*Error*: Failed on opening config file "' + str(config_file) + '" for write: ' + str(error))
             sys.exit(1)
 
+    gen_lm_license_file(lm_license_file)
+    gen_product_feature_file(product_feature_file)
+    gen_project_list_file(project_list_file)
+    gen_project_submit_host_file(project_submit_host_file)
+    gen_project_execute_host_file(project_execute_host_file)
+    gen_project_user_file(project_user_file)
+    gen_feature_product_filter_file('utilization', 'white', 'feature', utilization_white_feature_file)
+    gen_feature_product_filter_file('utilization', 'black', 'feature', utilization_black_feature_file)
+    gen_feature_product_filter_file('utilization', 'white', 'product', utilization_white_product_file)
+    gen_feature_product_filter_file('utilization', 'black', 'product', utilization_black_product_file)
+    gen_feature_product_filter_file('cost', 'white', 'feature', cost_white_feature_file)
+    gen_feature_product_filter_file('cost', 'black', 'feature', cost_black_feature_file)
+    gen_feature_product_filter_file('cost', 'white', 'product', cost_white_product_file)
+    gen_feature_product_filter_file('cost', 'black', 'product', cost_black_product_file)
+
+
+def gen_lm_license_file(lm_license_file):
     # Generate lm_license_file.
-    print('')
     print('>>> Generate LM_LICENSE_FILE configuration file "' + str(lm_license_file) + '".')
 
     if os.path.exists(lm_license_file):
-        print('*Warning*: config file "' + str(lm_license_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(lm_license_file) + '" already exists, will not update it.')
     else:
         try:
             with open(lm_license_file, 'w') as LLF:
@@ -159,12 +168,13 @@ fresh_interval = 300
             print('*Error*: Failed on opening config file "' + str(lm_license_file) + '" for write: ' + str(error))
             sys.exit(1)
 
+
+def gen_product_feature_file(product_feature_file):
     # Generate product_feature_file.
-    print('')
     print('>>> Generate product-feature relationship file "' + str(product_feature_file) + '".')
 
     if os.path.exists(product_feature_file):
-        print('*Warning*: config file "' + str(product_feature_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(product_feature_file) + '" already exists, will not update it.')
     else:
         try:
             with open(product_feature_file, 'w') as PFF:
@@ -176,12 +186,13 @@ fresh_interval = 300
             print('*Error*: Failed on opening config file "' + str(product_feature_file) + '" for write: ' + str(error))
             sys.exit(1)
 
-    # Generate project_list file.
-    print('')
+
+def gen_project_list_file(project_list_file):
+    # Generate project_list_file.
     print('>>> Generate project list file "' + str(project_list_file) + '".')
 
     if os.path.exists(project_list_file):
-        print('*Warning*: config file "' + str(project_list_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(project_list_file) + '" already exists, will not update it.')
     else:
         try:
             with open(project_list_file, 'w') as PLF:
@@ -196,12 +207,13 @@ fresh_interval = 300
             print('*Error*: Failed on opening config file "' + str(project_list_file) + '" for write: ' + str(error))
             sys.exit(1)
 
+
+def gen_project_submit_host_file(project_submit_host_file):
     # Generate project_submit_host_file.
-    print('')
     print('>>> Generate project-submit_host relationship file "' + str(project_submit_host_file) + '".')
 
     if os.path.exists(project_submit_host_file):
-        print('*Warning*: config file "' + str(project_submit_host_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(project_submit_host_file) + '" already exists, will not update it.')
     else:
         try:
             with open(project_submit_host_file, 'w') as PSHF:
@@ -216,12 +228,13 @@ fresh_interval = 300
             print('*Error*: Failed on opening config file "' + str(project_submit_host_file) + '" for write: ' + str(error))
             sys.exit(1)
 
+
+def gen_project_execute_host_file(project_execute_host_file):
     # Generate project_execute_host_file.
-    print('')
     print('>>> Generate project-execute_host relationship file "' + str(project_execute_host_file) + '".')
 
     if os.path.exists(project_execute_host_file):
-        print('*Warning*: config file "' + str(project_execute_host_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(project_execute_host_file) + '" already exists, will not update it.')
     else:
         try:
             with open(project_execute_host_file, 'w') as PEHF:
@@ -236,12 +249,13 @@ fresh_interval = 300
             print('*Error*: Failed on opening config file "' + str(project_execute_host_file) + '" for write: ' + str(error))
             sys.exit(1)
 
+
+def gen_project_user_file(project_user_file):
     # Generate project_user_file.
-    print('')
     print('>>> Generate project-user relationship file "' + str(project_user_file) + '".')
 
     if os.path.exists(project_user_file):
-        print('*Warning*: config file "' + str(project_user_file) + '" already exists, will not update it.')
+        print('    *Warning*: config file "' + str(project_user_file) + '" already exists, will not update it.')
     else:
         try:
             with open(project_user_file, 'w') as PUF:
@@ -254,6 +268,27 @@ fresh_interval = 300
             os.chmod(project_user_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(project_user_file) + '" for write: ' + str(error))
+            sys.exit(1)
+
+
+def gen_feature_product_filter_file(tab_name, filter_type, item_name, filter_file):
+    # Generate black/white feature/product filter file for UTILIZATION/COST tab.
+    print('>>> Generate ' + str(tab_name) + ' ' + str(filter_type) + ' ' + str(item_name) + ' file "' + str(filter_file) + '".')
+
+    if os.path.exists(filter_file):
+        print('    *Warning*: config file "' + str(filter_file) + '" already exists, will not update it.')
+    else:
+        try:
+            with open(filter_file, 'w') as FF:
+                FF.write('''# Example:
+# ''' + str(item_name) + '''1
+# ''' + str(item_name) + '''2
+
+''')
+
+            os.chmod(filter_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+        except Exception as error:
+            print('*Error*: Failed on opening config file "' + str(filter_file) + '" for write: ' + str(error))
             sys.exit(1)
 
 

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDesktopWidget, QComboBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem
+from PyQt5.QtWidgets import QDesktopWidget, QComboBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem, QHeaderView, QTableWidgetItem
 from PyQt5.QtGui import QTextCursor
 
 
@@ -25,6 +25,63 @@ def text_edit_visible_position(text_edit_item, position='End'):
 
     text_edit_item.setTextCursor(cursor)
     text_edit_item.ensureCursorVisible()
+
+
+def gen_default_table(table=None, table_dic=None):
+    """
+    default sort: True
+    table: pyqt5 table widget
+    table_dic format:
+    table_dic = {'title': [title1, ...],
+                 'width': [width1, ...],
+                 'info': [[info1_1, ...], ...]
+                 }
+    'title' in table_dic: column title
+    'width' in table_dic: column width, 0 or None --> auto-adaptive column width
+    'info' in table_dic: table row infomation list
+
+    requirement:
+    1. the length of table_dic['title'] is equivalent to the length od table_dic['info'][i] for i in len(table_dic['info'])
+    2. if 'width' in table_dic, the length of table_dic['title'] is equivalent to the length of table_dic['width']
+    """
+    if ('info' in table_dic) and ('title' in table_dic):
+        # Get the number of table column
+        column_num = len(table_dic['title'])
+
+        # Get the number of table row
+        row_num = len(table_dic['info'])
+
+        table.setShowGrid(True)
+        table.setSortingEnabled(True)
+
+        table.setColumnCount(0)
+        table.setColumnCount(column_num)
+        table.setRowCount(0)
+        table.setRowCount(row_num)
+
+        # Set table title
+        table.setHorizontalHeaderLabels(table_dic['title'])
+
+        # Set column width
+        if 'width' in table_dic:
+            if len(table_dic['width']) == column_num:
+                for i in range(column_num):
+                    width = table_dic['width'][i]
+
+                    if width:
+                        table.setColumnWidth(i, width)
+                    else:
+                        table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
+
+        # Fill table
+        for i in range(row_num):
+            item_list = table_dic['info'][i]
+
+            if len(table_dic['info'][i]) != column_num:
+                continue
+
+            for item in item_list:
+                table.setItem(i, 0, QTableWidgetItem(item))
 
 
 class QComboCheckBox(QComboBox):

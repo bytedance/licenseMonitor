@@ -1,0 +1,1641 @@
+ansyslmd:
+  SC_WG:
+  - Ansys SeaScape Worker Group 256 Pack
+  acdi_adprepost:
+  - Electronics Enterprise Prep/Post
+  acpreppost:
+  - Electronics Enterprise Prep/Post
+  anshpc_pack:
+  - Ansys Electronics Desktop (HPCPack)
+  disco_level1:
+  - Ansys Discovery Modeling
+  elec_solve_2d:
+  - Electronics Enterprise
+  elec_solve_hfss:
+  - Ansys Electronics Desktop (SIWAVE+Q3D+Circuit+HFSS)
+  elec_solve_icepak:
+  - Electronics Enterprise
+  elec_solve_level1:
+  - Electronics Enterprise
+  elec_solve_level2:
+  - Electronics Enterprise
+  elec_solve_level3:
+  - Electronics Enterprise
+  elec_solve_maxwell:
+  - Electronics Enterprise
+  elec_solve_q3d:
+  - Ansys Electronics Desktop (SIWAVE+Q3D+Circuit+HFSS)
+  elec_solve_siwave:
+  - Ansys Electronics Desktop (SIWAVE+Q3D+Circuit+HFSS)
+  electronics2d_gui:
+  - Electronics Enterprise
+  electronics3d_gui:
+  - Electronics Enterprise
+  electronics_desktop:
+  - Ansys Electronics Desktop (SIWAVE+Q3D+Circuit+HFSS)
+  electronicsckt_gui:
+  - Electronics Enterprise
+  redhawk_alp:
+  - redhawk SC
+  redhawk_apl:
+  - redhawk SC
+  redhawk_atpg3:
+  - redhawk SC
+  redhawk_caching:
+  - redhawk SC
+  redhawk_chip_power_model:
+  - redhawk SC
+  redhawk_cpa:
+  - redhawk SC
+  redhawk_cta:
+  - redhawk SC
+  redhawk_gds2def:
+  - redhawk SC
+  redhawk_inductance:
+  - redhawk SC
+  redhawk_lef2def:
+  - redhawk SC
+  redhawk_lowpower:
+  - redhawk SC
+  redhawk_mpr:
+  - redhawk SC
+  redhawk_netlisting:
+  - redhawk SC
+  redhawk_passchk:
+  - redhawk SC
+  redhawk_pwrcalc:
+  - redhawk SC
+  redhawk_pwrplan:
+  - redhawk SC
+  redhawk_sc_token:
+  - redhawk SC
+  redhawk_sig_em:
+  - redhawk SC
+  redhawk_sim2:
+  - redhawk SC
+  redhawk_sim_cpm:
+  - redhawk SC
+  redhawk_spice_pkg:
+  - redhawk SC
+  redhawk_tpm:
+  - redhawk SC
+  redhawk_vcd:
+  - redhawk SC
+  sptArtist:
+  - Ansys PowerArtist-EX
+  sptCoverage:
+  - Ansys PowerArtist-EX
+  sptDirectDotLib:
+  - Ansys PowerArtist-EX
+  sptEX:
+  - Ansys PowerArtist-EX
+  sptElaborate:
+  - Ansys PowerArtist-EX
+  sptGAFSplit:
+  - Ansys PowerArtist-EX
+  sptIPWizard:
+  - Ansys PowerArtist-EX
+  sptMixedLanguage:
+  - Ansys PowerArtist-EX
+  sptMixedVT:
+  - Ansys PowerArtist-EX
+  sptMultipleTestBenches:
+  - Ansys PowerArtist-EX
+  sptMultipleVoltages:
+  - Ansys PowerArtist-EX
+  sptPaves:
+  - Ansys PowerArtist-EX
+  sptPazi:
+  - Ansys PowerArtist-EX
+  sptPowerGating:
+  - Ansys PowerArtist-EX
+  sptProfiler:
+  - Ansys PowerArtist-EX
+  sptRPM:
+  - Ansys PowerArtist-EX
+  sptRTLRewrite:
+  - Ansys PowerArtist-EX
+  sptSOC:
+  - Ansys PowerArtist-EX
+  sptSPEFCapacitance:
+  - Ansys PowerArtist-EX
+  sptSynLib2Alf:
+  - Ansys PowerArtist-EX
+  sptSystemVerilog:
+  - Ansys PowerArtist-EX
+  sptTBEngine:
+  - Ansys PowerArtist-EX
+  sptVWEngine:
+  - Ansys PowerArtist-EX
+  sptVectorSelector:
+  - Ansys PowerArtist-EX
+  sptVectorless:
+  - Ansys PowerArtist-EX
+  sptWSEngine:
+  - Ansys PowerArtist-EX
+  sptWWALFLint:
+  - Ansys PowerArtist-EX
+  sptWWEngine:
+  - Ansys PowerArtist-EX
+  sptWWGAF:
+  - Ansys PowerArtist-EX
+  sptWWSim:
+  - Ansys PowerArtist-EX
+  sptWWUI:
+  - Ansys PowerArtist-EX
+  sptWWVCDPlus:
+  - Ansys PowerArtist-EX
+  totem:
+  - Totem-MMX
+  totem_apl:
+  - Totem-MMX
+  totem_caching:
+  - Totem-MMX
+  totem_digital:
+  - Totem-MMX
+  totem_gds:
+  - Totem-MMX
+  totem_hc:
+  - Totem-MMX
+  totem_inductance:
+  - Totem-MMX
+  totem_ipg:
+  - Totem-MMX
+  totem_mpr:
+  - Totem-MMX
+  totem_nx:
+  - Totem-MMX
+  totem_pwrcalc:
+  - Totem-MMX
+  totem_sim:
+  - Totem-MMX
+  totem_vcd:
+  - Totem-MMX
+  totem_wizard:
+  - Totem-MMX
+ARTERISD:
+  MDS_auto_busif_mapping:
+  - Arteris_IPD_Magillem
+  MDS_cli:
+  - Arteris_IPD_Magillem
+  MDS_cli_checkers:
+  - Arteris_IPD_Magillem
+  MDS_common:
+  - Arteris_IPD_Magillem
+  MDS_comp_xls_import_export:
+  - Arteris_IPD_Magillem
+  MDS_custom_reg_bank_generator:
+  - Arteris_IPD_Magillem
+  MDS_design2script:
+  - Arteris_IPD_Magillem
+  MDS_design_compare:
+  - Arteris_IPD_Magillem
+  MDS_docgeneration:
+  - Arteris_IPD_Magillem
+  MDS_function:
+  - Arteris_IPD_Magillem
+  MDS_generators:
+  - Arteris_IPD_Magillem
+  MDS_group_adhoc:
+  - Arteris_IPD_Magillem
+  MDS_gui:
+  - Arteris_IPD_Magillem
+  MDS_internal_mrv_mse:
+  - Arteris_IPD_Magillem
+  MDS_ip_update:
+  - Arteris_IPD_Magillem
+  MDS_linger_2:
+  - Arteris_IPD_Magillem
+  MDS_magillem:
+  - Arteris_IPD_Magillem
+  MDS_mdl_cli:
+  - Arteris_IPD_Magillem
+  MDS_mdl_general:
+  - Arteris_IPD_Magillem
+  MDS_mdl_gui:
+  - Arteris_IPD_Magillem
+  MDS_mgs_cli:
+  - Arteris_IPD_Magillem
+  MDS_mgs_gui:
+  - Arteris_IPD_Magillem
+  MDS_mip_cli:
+  - Arteris_IPD_Magillem
+  MDS_mip_general:
+  - Arteris_IPD_Magillem
+  MDS_mip_gui:
+  - Arteris_IPD_Magillem
+  MDS_module:
+  - Arteris_IPD_Magillem
+  MDS_mpa_cli:
+  - Arteris_IPD_Magillem
+  MDS_mpa_general:
+  - Arteris_IPD_Magillem
+  MDS_mpa_gui:
+  - Arteris_IPD_Magillem
+  MDS_mrv_cli:
+  - Arteris_IPD_Magillem
+  MDS_mrv_general:
+  - Arteris_IPD_Magillem
+  MDS_mrv_generators:
+  - Arteris_IPD_Magillem
+  MDS_mrv_gui:
+  - Arteris_IPD_Magillem
+  MDS_mrv_xls_import_export:
+  - Arteris_IPD_Magillem
+  MDS_netlist_verilog:
+  - Arteris_IPD_Magillem
+  MDS_netlist_vhdl:
+  - Arteris_IPD_Magillem
+  MDS_packager:
+  - Arteris_IPD_Magillem
+  MDS_param_hier_view:
+  - Arteris_IPD_Magillem
+  MDS_project_view:
+  - Arteris_IPD_Magillem
+  MDS_reg_bank_generator:
+  - Arteris_IPD_Magillem
+  MDS_register_view:
+  - Arteris_IPD_Magillem
+  MDS_rtlapi:
+  - Arteris_IPD_Magillem
+  MDS_schematic_editor:
+  - Arteris_IPD_Magillem
+  MDS_spirit_editor:
+  - Arteris_IPD_Magillem
+  MDS_static_elaboration:
+  - Arteris_IPD_Magillem
+  MDS_tcl_cmdline:
+  - Arteris_IPD_Magillem
+  MDS_tgi-workshop:
+  - Arteris_IPD_Magillem
+  MDS_virtual_hierarchy:
+  - Arteris_IPD_Magillem
+cdslmd:
+  '111':
+  - Virtuoso Advanced Node Framework
+  - Virtuoso(R) Schematic Editor XL
+  - Virtuoso(R) ADE Assembler
+  - Virtuoso(R) Layout Suite XL
+  - Virtuoso Layout Suite GXL
+  - Virtuoso Layout Suite EXL
+  - Virtuoso Layout Suite MXL
+  '21400':
+  - Virtuoso(R) Schematic Editor Verilog(R) Interface
+  '940':
+  - Virtuoso(R) Schematic Editor XL
+  '945':
+  - Virtuoso(R) Schematic Editor XL
+  ACCEL_MEM_PLUS:
+  - Palladium Series Memory Model PLUS Multiple-Subscription
+  ACCEL_MEM_VIP:
+  - Palladium Series Memory Model PLUS Multiple-Subscription
+  ACC_VDEBUG:
+  - Virtual Debug Interface to Software Debuggers 4-pack
+  ACC_VIP_AXI_3_4:
+  - Accelerated VIP for AMBA AXI
+  ACC_VIP_MIPI_CSI_2:
+  - Palladium CSI-2 Virtual Device
+  ACC_VIP_MIPI_DSI_2:
+  - Palladium DSI-2 Virtual Device
+  AMS_Designer_Link:
+  - Spectre(R) FX Max
+  AVIP_AMBA:
+  - Accelerated VIP for AMBA
+  AVIP_PCIE_5:
+  - Accelerated VIP for PCIe 5.0
+  AdvPI_20_SystemPI_Opt:
+  - Sigrity Advanced PI II SystemPI Option
+  AdvancedPI:
+  - Celsius Advanced PTI
+  AdvancedPI_TI_20:
+  - Celsius Advanced PTI
+  AdvancedSI:
+  - Sigrity Advanced SI II
+  AdvancedSI_20:
+  - Sigrity Advanced SI II
+  Advanced_Package_Designer:
+  - Allegro (R) Package Designer Plus
+  Advanced_sub_3nm_modeling:
+  - Cadence Quantus 3nm Option
+  Advanced_sub_5nm_modeling:
+  - Cadence Quantus 5nm Option
+  Affirma_sim_analysis_env:
+  - Indago Debug Analyzer App
+  - Protium X2 Implementation and Debug Software
+  - Spectre(R) MMSIM with Spectre X Simulator
+  - Spectre(R) FX Max
+  - Xcelium Single-Core
+  Allegro_Adv_Packaging_Plus:
+  - Allegro (R) Package Designer Plus
+  Allegro_PCB_Router_610:
+  - SiP Layout Bundle
+  Allegro_Viewer_Plus:
+  - Allegro(R) Design Authoring
+  Allegro_performance:
+  - Allegro PCB Designer
+  Allegro_studio:
+  - Allegro PCB Designer
+  Base_Verilog_Lib:
+  - Allegro(R) Design Authoring
+  COSLITE_ACCESS:
+  - COSLITE Access
+  Celsius_CFD_Opt:
+  - Celsius CFD Extension
+  Celsius_Thermal:
+  - Celsius Thermal Solver
+  Celsius_ThermalG:
+  - Celsius Thermal Solver
+  Cerebrus_Genus:
+  - Cerebrus Genus 10x Base Package
+  Cerebrus_Innovus:
+  - Cerebrus Innovus 10x Base Package
+  Cerebrus_Mgr:
+  - Enables Cerebrus Run Manager
+  Cerebrus_Replay:
+  - Enables Cerebrus Flow Replay
+  Clarity_3DSolver:
+  - Clarity 3D Solver
+  Clarity_3DSolverG:
+  - Clarity 3D Solver
+  Concept_HDL_studio:
+  - Allegro(R) Design Authoring
+  Conformal_Asic:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  Conformal_Custom:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  Conformal_Low_Power_GXL:
+  - Conformal Low Power - GXL
+  Conformal_Ultra:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  DFM_Core_Technology:
+  - Cadence Quantus Extraction - XL
+  - Voltus IC Power Integrity Solution - XL (VTS-XL)
+  Encounter_C:
+  - Innovus Implementation System
+  Encounter_NG100:
+  - Encounter Next Generation 100
+  Extended_Verilog_Lib:
+  - Allegro(R) Design Authoring
+  GEN_ENG100:
+  - Genus Next Generation Product 100
+  Genus_CPU_Opt:
+  - Genus CPU Accelerator Option
+  Genus_Low_Power_Opt:
+  - Genus Low Power Option
+  Genus_Physical_Opt:
+  - Genus Physical Option
+  Genus_Synthesis:
+  - Genus Synthesis Solution
+  Helium_Base_Lib:
+  - Helium Creation and SW Development Environment with Arm Fast
+  Helium_Build_Batch:
+  - Helium Creation and SW Development Environment with Arm Fast
+  Helium_Build_GUI:
+  - Helium Creation and SW Development Environment with Arm Fast
+  Helium_Gshift_RTLSWD_Opt:
+  - Helium RTL SW debug and Gearshift Option
+  Helium_Lib_T1:
+  - Helium Tier 1 Virtual and Hybrid Model library runtime
+  Helium_SWD_GUI:
+  - Helium Creation and SW Development Environment with Arm Fast
+  Helium_Virtual_Runtime:
+  - Helium Creation and SW Development Environment with Arm Fast
+  Indago_DA_App:
+  - Indago Debug Analyzer App
+  Indago_DA_wAPI:
+  - Indago Debug Analyzer App
+  Innovus_3D_IC_Opt:
+  - Innovus 3D-IC Option
+  Innovus_5nm_Opt:
+  - Innovus 5nm Option
+  Innovus_7nm_Opt:
+  - Innovus 7nm Option
+  Innovus_C:
+  - Innovus Implementation System
+  Innovus_CPU_Opt:
+  - Innovus CPU Accelerator Option
+  Innovus_EHFS_Opt:
+  - Innovus Early Hierarchical Floorplan Synthesis Option
+  Innovus_GigaPlace_GXL_Opt:
+  - Innovus GigaPlace-GXL Option
+  Innovus_GigaPlace_XL_Opt:
+  - Innovus GigaPlace - XL Option
+  Innovus_Hier_Opt:
+  - Innovus Hierarchical Design Option
+  Innovus_Impl_System:
+  - Innovus Implementation System
+  Innovus_MS_Opt:
+  - Innovus Mixed Signal Option
+  Innovus_hfr_Opt:
+  - Innovus High Frequency Route Option
+  Integrated_Metrics_Center:
+  - Protium X2 Implementation and Debug Software
+  - Xcelium Single-Core
+  Integrity_3D_IC_Impl_System:
+  - Integrity 3D-IC
+  Interposer_Extract_20:
+  - Clarity Advanced IC Package Extraction Suite
+  LEAPFROG-CV:
+  - Virtuoso(R) Schematic Editor Verilog(R) Interface
+  Liberate_Unified_Cell:
+  - Liberate Trio
+  Liberate_Unified_Macro:
+  - Liberate MX Trio (12-Pack)
+  MM_DDR5_LRDIMM:
+  - Memory Model for DDR5 DIMM (includes DDR5 LRDIMM, DDR5 RDIMM
+  MM_LPD5:
+  - Memory Model for LPDDR5 (includes LPDDR4 and LPDDR3) - Initi
+  MM_PORTFOLIO_CATALOG:
+  - Memory Model Portfolio
+  MP_HPC_Token_V8:
+  - Multi-Physics Universal HPC Accelerator V8
+  OrbitIO_Sys_PlanC:
+  - Allegro System Integrator
+  PCB_design_studio:
+  - Allegro PCB Designer
+  Palladium_CSI2_Device:
+  - Palladium CSI-2 Virtual Device
+  Palladium_DSI2_Device:
+  - Palladium DSI-2 Virtual Device
+  Palladium_XP_HDL_Checking:
+  - Protium X2 Implementation and Debug Software
+  Palladium_Z1_Compile:
+  - Palladium Z1 Compiler
+  Palladium_Z1_Domain:
+  - Palladium Z1 Domain
+  Palladium_Z2_Compiler:
+  - Palladium Z2 Compiler
+  Palladium_Z2_Domain:
+  - Palladium Z2 Domain
+  PowerSI:
+  - Sigrity PowerSI II
+  PowerSI_II:
+  - Sigrity PowerSI II
+  Protium2_Implementation_Debug:
+  - Protium X2 Implementation and Debug Software
+  Protium4_Implementation_Debug:
+  - Protium X2 Implementation and Debug Software
+  Protium_S1_Domain:
+  - Protium X2 Implementation and Debug Software
+  QRC_Advanced_Analysis:
+  - Cadence Quantus Advanced Analysis GXL Option
+  SIP_WLCSP:
+  - APD Silicon Layout Option
+  SLNK:
+  - Sigrity PowerSI II
+  - Sigrity XtractIM II
+  - Sigrity Advanced SI II
+  - Allegro System Integrator
+  - Celsius Thermal Solver
+  - Celsius CFD Extension
+  - Clarity 3D Solver
+  - Celsius Advanced PTI
+  - Clarity Advanced IC Package Extraction Suite
+  SPECCTRA_HP:
+  - Allegro PCB Designer
+  SPECCTRA_PCB:
+  - Allegro PCB Designer
+  SPECCTRA_expert:
+  - Allegro PCB Designer
+  SiP_Layout_Bundle_1:
+  - SiP Layout Bundle
+  Spectre_AMSD_Lk:
+  - Spectre(R) FX Max
+  Spectre_AMS_MMSIM_Lk:
+  - Spectre(R) MMSIM with Spectre X Simulator
+  Spectre_FX_MMSIM_Enabler:
+  - Spectre FX MMSIM Option
+  Spectre_X_MMSIM_Lk:
+  - Spectre(R) MMSIM with Spectre X Simulator
+  Spectre_char_opt:
+  - Spectre Characterization Simulator Option
+  Tempus_Timing_Signoff_XL:
+  - Tempus Timing Signoff Solution XL
+  VIP_AMBA5_CHIE:
+  - VIP for AMBA5 CHI-F (includes CHI-A, B, C, D, E) - Initial R
+  VIP_AXI_ACE_5:
+  - VIP for AMBA ACE5 (includes ACE5-Lite, ACE5-LiteDVM, AMBA4 A
+  Vbridge_generic_port:
+  - VirtualBridge 8-Port Pack
+  Virtuoso_ADE_Assembler:
+  - Virtuoso(R) ADE Assembler
+  Virtuoso_APS_MMSIM_Lk:
+  - Spectre(R) MMSIM with Spectre X Simulator
+  Virtuoso_Adv_Node_Framework:
+  - Virtuoso Advanced Node Framework
+  - Virtuoso(R) Schematic Editor XL
+  - Virtuoso(R) Layout Suite XL
+  - Virtuoso Advanced Node Option for Layout
+  - Virtuoso Layout Suite EXL
+  - Virtuoso Layout Suite MXL
+  Virtuoso_Adv_Node_Opt_Layout:
+  - Virtuoso Advanced Node Option for Layout
+  Virtuoso_Layout_Suite_EXL:
+  - Virtuoso Layout Suite EXL
+  Virtuoso_Layout_Suite_GXL:
+  - Virtuoso Layout Suite GXL
+  Virtuoso_Layout_Suite_MXL:
+  - Virtuoso Layout Suite MXL
+  Virtuoso_Layout_Suite_XL:
+  - Virtuoso(R) Layout Suite XL
+  Virtuoso_Multi_mode_Simulation:
+  - Spectre(R) MMSIM with Spectre X Simulator
+  Virtuoso_QRC_Extraction_XL:
+  - Cadence Quantus Extraction - XL
+  Virtuoso_Schematic_Editor_XL:
+  - Virtuoso(R) Schematic Editor XL
+  Virtuoso_Spectre_GXL_MMSIM_Lk:
+  - Spectre(R) MMSIM with Spectre X Simulator
+  Virtuoso_XPS_MMSIM_Lk:
+  - Spectre(R) MMSIM with Spectre X Simulator
+  Vmanager_High_Availability:
+  - vManager Gen 4
+  Vmanager_XML:
+  - Xcelium Machine Learning App
+  Voltus_Power_Integrity_AA:
+  - Voltus IC Power Integrity Solution Advanced Analysis GXL Opt
+  Voltus_Power_Integrity_MP:
+  - Voltus IC Power Integrity Solution -  MP (VTS-MP)  (Accelera
+  Voltus_Power_Integrity_XL:
+  - Voltus IC Power Integrity Solution - XL (VTS-XL)
+  Xcelium_ML_Client_Option:
+  - Xcelium Machine Learning App
+  Xcelium_ML_Master:
+  - Xcelium Machine Learning App
+  Xcelium_SC_DMS_Option:
+  - Xcelium Digital Mixed Signal Option
+  Xcelium_Single_Core:
+  - Protium X2 Implementation and Debug Software
+  - Xcelium Single-Core
+  XtractIM:
+  - Sigrity XtractIM II
+  XtractIM_20:
+  - Sigrity XtractIM II
+  adv_package_designer_expert:
+  - Allegro (R) Package Designer Plus
+  conformal_datapath:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  conformal_ldd:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  conformal_lec:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  conformal_lvr:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  conformal_mem:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  conformal_vhd:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  conformal_vlg:
+  - Conformal - GXL (a.k.a Conformal Custom)
+  expgen:
+  - Allegro(R) Design Authoring
+  jasper_dao:
+  - Jasper RTL Designer Apps Option (Option to JGFVBASE, JGDAO15
+  jasper_papp:
+  - Jasper Formal Verification Platform
+  jasper_pcov:
+  - Jasper Formal Verification Platform
+  jasper_pint:
+  - Jasper Formal Verification Platform
+  pcomp:
+  - Allegro(R) Design Authoring
+  plotVersa:
+  - Allegro(R) Design Authoring
+  skillDev:
+  - Cadence(R) SKILL Development Environment
+  spectre_FX_sc:
+  - Spectre(R) FX Max
+  tempus_3nm_modeling:
+  - Tempus Timing Signoff Solution 3nm Option
+  transformal_ltx:
+  - Conformal - GXL (a.k.a Conformal Custom)
+empyrean:
+  ALPS_ADV:
+  - ALPS
+  ALPS_AMS:
+  - ALPS
+  ALPS_AS:
+  - ALPS
+  ALPS_DS:
+  - ALPS
+  ALPS_POST:
+  - ALPS
+  ALPS_SMS:
+  - ALPS
+  QuaLib:
+  - Qualib
+  QuaLib_DynamicQA:
+  - Qualib DynamicQA
+  QuaLib_Trend:
+  - Qualib PPA Trend
+  Qualib_PPA_Comparison:
+  - Qualib PPAComparison
+  SKI_EDITOR:
+  - Skipper Editor
+  SKI_HTRACE:
+  - Skipper Trace
+  SKI_IPM:
+  - Skipper IPMerge
+  SKI_VIEWER:
+  - Skipper Viewer
+  XTIME_AGE:
+  - XTIME
+  XTIME_CLIENT:
+  - XTIME
+  XTIME_CLOCK_JITTER:
+  - XTIME
+  XTime:
+  - XTIME
+  XTop:
+  - ICExplorer XTOP
+  XTop_TurboMode:
+  - ICExplorer XTOP
+mgcld:
+  Crosscheck:
+  - Solido Crosscheck Premium Ap SW
+  CrosscheckPrem:
+  - Solido Crosscheck Premium Ap SW
+  IpqaApi:
+  - Solido Crosscheck Premium Ap SW
+  VarDesAdvanced:
+  - Variation Designer Advanced Ap SW
+  afsace:
+  - AFS License Ap SW
+  afshb:
+  - AFS License Ap SW
+  afslicense:
+  - AFS License Ap SW
+  afswavecrave:
+  - AFS License Ap SW
+  caldesignrev:
+  - Calibre DESIGNrev Ap SW
+  caldfmproperty:
+  - Calibre xRC and xACT Ap SW
+  calibreadp:
+  - Calibre xRC and xACT Ap SW
+  calibredrc:
+  - Calibre nmDRC Ap SW
+  calibrehdrc:
+  - Calibre nmDRC-H Op SW
+  calibrehlvs:
+  - Calibre nmLVS-H Op SW
+  calibrehlvsadv:
+  - Calibre nmLVS Advanced Op SW
+  calibrelvs:
+  - Calibre nmLVS Ap SW
+  calibreperc:
+  - Calibre PERC Ap SW
+  - Calibre PERC (legacy) Ap SW
+  calibrepercadv:
+  - Calibre PERC Advanced Op SW
+  calibrepercsp:
+  - Calibre PERC Ap SW
+  - Calibre PERC (legacy) Ap SW
+  calibreqdb:
+  - Calibre RVE/QDB-H Ap SW
+  calibrexrc:
+  - Calibre xRC and xACT Ap SW
+  calibrexrctoxact:
+  - Calibre xRC and xACT Ap SW
+  calinteractive:
+  - Calibre Interactive Ap SW
+  calmpadv:
+  - Calibre Multi-Patterning-Advanced Op SW
+  calmpgold:
+  - Calibre Multi-Patterning-Gold Op SW
+  calmultipattern:
+  - Calibre Multi-Patterning Op SW
+  calpmatch:
+  - Calibre Pattern Match Op SW
+  calrealtime:
+  - Calibre RealTime Custom Ap SW
+  calrealtimedig:
+  - Calibre RealTime Digital Ap SW
+  calreconlvs:
+  - Calibre nmLVS Recon Op SW
+  calyieldenhance:
+  - Calibre YieldEnhancer Bnd SW
+  calyieldserver:
+  - Calibre YieldEnhancer Bnd SW
+  mtijtag_c:
+  - Tessent IJTAG Ap SW
+  mtscanpro_c:
+  - Tessent ScanPro Ap SW
+  mtssn_c:
+  - Tessent Streaming Scan Network Op SW
+  mttestkompress_c:
+  - Tessent TestKompress Ap SW
+  mttsacjtag_c:
+  - Tessent BoundaryScan-TS AC Op SW
+  mttsbscan_c:
+  - Tessent BoundaryScan-TS Ap SW
+  mttsmembrepair_c:
+  - Tessent MemoryBIST-TS repair Op SW
+  mttsmemorybist_c:
+  - Tessent MemoryBIST-TS Ap SW
+  verifdataport:
+  - Calibre RVE/QDB-H Ap SW
+saltd:
+  Crosscheck:
+  - Solido Crosscheck Premium Ap SW
+  CrosscheckPrem:
+  - Solido Crosscheck Premium Ap SW
+  IpqaApi:
+  - Solido Crosscheck Premium Ap SW
+  VarDesAdvanced:
+  - Variation Designer Advanced Ap SW
+  afsace:
+  - AFS License Ap SW
+  afshb:
+  - AFS License Ap SW
+  afslicense:
+  - AFS License Ap SW
+  afswavecrave:
+  - AFS License Ap SW
+  caldesignrev:
+  - Calibre DESIGNrev Ap SW
+  caldfmproperty:
+  - Calibre xRC and xACT Ap SW
+  calibreadp:
+  - Calibre xRC and xACT Ap SW
+  calibredrc:
+  - Calibre nmDRC Ap SW
+  calibrehdrc:
+  - Calibre nmDRC-H Op SW
+  calibrehlvs:
+  - Calibre nmLVS-H Op SW
+  calibrehlvsadv:
+  - Calibre nmLVS Advanced Op SW
+  calibrelvs:
+  - Calibre nmLVS Ap SW
+  calibreperc:
+  - Calibre PERC Ap SW
+  - Calibre PERC (legacy) Ap SW
+  calibrepercadv:
+  - Calibre PERC Advanced Op SW
+  calibrepercsp:
+  - Calibre PERC Ap SW
+  - Calibre PERC (legacy) Ap SW
+  calibreqdb:
+  - Calibre RVE/QDB-H Ap SW
+  calibrexrc:
+  - Calibre xRC and xACT Ap SW
+  calibrexrctoxact:
+  - Calibre xRC and xACT Ap SW
+  calinteractive:
+  - Calibre Interactive Ap SW
+  calmpadv:
+  - Calibre Multi-Patterning-Advanced Op SW
+  calmpgold:
+  - Calibre Multi-Patterning-Gold Op SW
+  calmultipattern:
+  - Calibre Multi-Patterning Op SW
+  calpmatch:
+  - Calibre Pattern Match Op SW
+  calrealtime:
+  - Calibre RealTime Custom Ap SW
+  calrealtimedig:
+  - Calibre RealTime Digital Ap SW
+  calreconlvs:
+  - Calibre nmLVS Recon Op SW
+  calyieldenhance:
+  - Calibre YieldEnhancer Bnd SW
+  calyieldserver:
+  - Calibre YieldEnhancer Bnd SW
+  mtijtag_c:
+  - Tessent IJTAG Ap SW
+  mtscanpro_c:
+  - Tessent ScanPro Ap SW
+  mtssn_c:
+  - Tessent Streaming Scan Network Op SW
+  mttestkompress_c:
+  - Tessent TestKompress Ap SW
+  mttsacjtag_c:
+  - Tessent BoundaryScan-TS AC Op SW
+  mttsbscan_c:
+  - Tessent BoundaryScan-TS Ap SW
+  mttsmembrepair_c:
+  - Tessent MemoryBIST-TS repair Op SW
+  mttsmemorybist_c:
+  - Tessent MemoryBIST-TS Ap SW
+  verifdataport:
+  - Calibre RVE/QDB-H Ap SW
+snpslmd:
+  ACS:
+  - Design Compiler Elite Pkg
+  BOA-BRT:
+  - Design Compiler Elite Pkg
+  DC-Expert:
+  - Design Compiler Elite Pkg
+  DC-Extension:
+  - Design Compiler Elite Pkg
+  DC-Graphical:
+  - Design Compiler Elite Pkg
+  DC-SDF-Interface:
+  - Design Compiler Elite Pkg
+  DC-Ultra-Features:
+  - Design Compiler Elite Pkg
+  DC-Ultra-Opt:
+  - Design Compiler Elite Pkg
+  DWC-05N-ELV-PVTS-HD:
+  - DWC Duet TSMC N5 ELV PVT Add-on
+  DWC-05N-ELV-PVTS-HS:
+  - DWC Duet TSMC N5 ELV PVT Add-on
+  DWC-05N-LV-PVTS-HD:
+  - DWC Duet TSMC N5 LV PVT Add-on
+  DWC-05N-LV-PVTS-HS:
+  - DWC Duet TSMC N5 LV PVT Add-on
+  DWC-05N-OD-PVTS-HD:
+  - DWC Duet TSMC N5 OD PVT Add-on
+  DWC-05N-OD-PVTS-HS:
+  - DWC Duet TSMC N5 OD PVT Add-on
+  DWC-05N-SOD-PVTS-HD:
+  - DWC Duet TSMC N5 SOD PVT Add-on
+  DWC-05N-SOD-PVTS-HS:
+  - DWC Duet TSMC N5 SOD PVT Add-on
+  DWC-05N-ULV-PVTS-HD:
+  - DWC Duet TSMC N5 ULV PVT Add-on
+  DWC-05N-ULV-PVTS-HS:
+  - DWC Duet TSMC N5 ULV PVT Add-on
+  DWC-AMBA-AHB5-Fabric-Source:
+  - DWC AMBA AHB5 Fabric Add-on
+  DWC-AMBA-Fabric-Source:
+  - DWC AMBA Fabric
+  DWC-AMBA-Fabric-Source-Plus:
+  - DWC AMBA Fabric
+  DWC-APB-Advanced-Source:
+  - DWC APB Advance Peripherals
+  DWC-APB-Advanced-Source-Plus:
+  - DWC APB Advance Peripherals
+  DWC-APB-Periph-Source:
+  - DWC APB Peripherals
+  DWC-AXI-DMAC:
+  - DWC AXI DMAC
+  DWC-AXI-DMAC-Plus:
+  - DWC AXI DMAC
+  DWC-DDRCTL:
+  - DWC LPDDR5/4/4X Controller AFP
+  DWC-DSC-BLK-MGR:
+  - DWC VESA DSC Encoder ver 1.2a RTL
+  - DWC VESA DSC Decoder ver 1.2a RTL
+  DWC-DSC-CDEC:
+  - DWC VESA DSC Encoder ver 1.2a RTL
+  - DWC VESA DSC Decoder ver 1.2a RTL
+  DWC-DSC-CDEC-SRC:
+  - DWC VESA DSC Encoder ver 1.2a RTL
+  - DWC VESA DSC Decoder ver 1.2a RTL
+  DWC-DSC-DEC-V12A:
+  - DWC VESA DSC Decoder ver 1.2a RTL
+  DWC-DSC-ENC-V12A:
+  - DWC VESA DSC Encoder ver 1.2a RTL
+  DWC-DSC-MLT-PRT:
+  - DWC VESA DSC Encoder ver 1.2a RTL
+  DWC-LPDDR54-CONTROLLER-AFP:
+  - DWC LPDDR5/4/4X Controller AFP
+  DWC-LPDDR544X-PHY-FW:
+  - DWC LPDDR5/4/4X PHY TSMC N5
+  DWC-LPDDR544X-PHY-TSMC-N5:
+  - DWC LPDDR5/4/4X PHY TSMC N5
+  DWC-MIPI-CD-RX-2T2L-45-TSMCN5P:
+  - DWC MIPI CD RX 2T2L 45 TSMCN5
+  DWC-MIPI-CD-RX-3T4L-45-TSMCN5P:
+  - DWC MIPI CD RX 3T4L 45 TSMCN5
+  DWC-MIPI-CD-TX-3T4L-45-TSMCN5P:
+  - DWC MIPI CD TX 3T4L 45 TSMCN5
+  DWC-MIPI-CSI2-V3-DEV:
+  - DWC MIPI CSI-2 V3 Device Ctrl Prem
+  DWC-MIPI-CSI2-V3-DEV-PREM:
+  - DWC MIPI CSI-2 V3 Device Ctrl Prem
+  DWC-MIPI-I3C:
+  - DWC MIPI I3C Multi Role
+  DWC-MIPI-I3C-DRD-SRC:
+  - DWC MIPI I3C Multi Role
+  DWC-MIPI-I3C-SRC:
+  - DWC MIPI I3C Multi Role
+  DWC-MSHC:
+  - DWC SD4.X MMC Host Controller
+  DWC-MSHC-LITE:
+  - DWC SD4.X MMC Host Controller
+  DWC-MSHC-SRC:
+  - DWC SD4.X MMC Host Controller
+  DWC-PCIE:
+  - DWC PCIe 4.0 Premium AMBA II
+  - DWC PCIe 3.0 Premium AMBA II
+  DWC-PCIE-G3-PREM-A-V2-SRC:
+  - DWC PCIe 3.0 Premium AMBA II
+  DWC-PCIE-G4-PREM-A-V2-SRC:
+  - DWC PCIe 4.0 Premium AMBA II
+  DWC-PCIe-30-NS-TSMC-N5-X2:
+  - DWC PCIe 30 NS TSMC N5 X2
+  DWC-PCIe-40-NS-LP-TSMC-N7-X4:
+  - DWC PCIe 40 NS LP TSMC N7 X4
+  DWC-Sensors-DTS2-NDNW-TSMC-N5:
+  - DWC Sensors DTS2 Non-Deep NWELL TSMC N5
+  DWC-Sensors-PD-TSMC-7FF:
+  - DWC Sensors PD TSMC N7
+  DWC-Sensors-PD-TSMC-N5:
+  - DWC Sensors PD TSMC N5
+  DWC-Sensors-PVTC-S5:
+  - DWC Sensors PVT-C Series 5
+  DWC-Sensors-PVTC-TSMC-7FF:
+  - DWC Sensors PVT-C Series 3+ TSMC N7
+  DWC-Sensors-TD-TSMC-7FF:
+  - DWC Sensors TD with Base Pin TSMC N7
+  DWC-Sensors-TD-TSMC-N5:
+  - DWC Sensors TD TSMC N5
+  DWC-Sensors-TS-TSMC-7FF:
+  - DWC Sensors TS TSMC N7
+  DWC-Sensors-VM-TSMC-7FF:
+  - DWC Sensors VM TSMC N7
+  DWC-Sensors-VM-TSMC-N5:
+  - DWC Sensors VM TSMC N5
+  DWC-TS05NXQXLOGL06HDL051F:
+  - DWC Duet TSMC N5
+  DWC-TS05NXQXLOGL06HSL057F:
+  - DWC Duet TSMC N5
+  DWC-TS07NXPXLOGL08HDL057F:
+  - DWC Duet TSMC N7
+  DWC-TS07NXPXLOGL08HSL064F:
+  - DWC Duet TSMC N7
+  DWC-coreAssembler:
+  - DWC AMBA Fabric
+  - DWC PCIe 4.0 Premium AMBA II
+  - DWC LPDDR5/4/4X PHY TSMC N5
+  - DWC PCIe 3.0 Premium AMBA II
+  DWC-ralgen:
+  - DWC PCIe 4.0 Premium AMBA II
+  - DWC SD4.X MMC Host Controller
+  - DWC MIPI I3C Multi Role
+  - DWC PCIe 3.0 Premium AMBA II
+  - DWC MIPI DSI2 HP Device Combo Ctrl
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  - DWC MIPI CSI-2 V3 Device Ctrl Prem
+  DWC_PCIe_SW_Sample:
+  - DWC PCIe Software Sample
+  DWC_mipi_csi-2_device_sw:
+  - DWC MIPI CSI2 Device SW Sample
+  DWC_mipi_csi-2_vx_host_sw:
+  - DWC MIPI CSI2 Vx Host SW Sample
+  DWC_mipi_dsi2_device_sw:
+  - DWC MIPI DSI-2 Device SW
+  DWC_mipi_dsi2_host:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  DWC_mipi_dsi2_host_sw:
+  - DWC MIPI DSI-2 Host SW Sample
+  DWC_mipi_dsi2_hp_host:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  DWC_mipi_dsi2_hp_host_combo:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  DWC_mipi_i3c_sw:
+  - DWC MIPI I3C SW Sample
+  DWC_mipidsi2_device:
+  - DWC MIPI DSI2 HP Device Combo Ctrl
+  DWC_mipidsi2_host:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  DWC_mipidsi2_host_combo:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  DWC_mipidsi2_hp_device_combo:
+  - DWC MIPI DSI2 HP Device Combo Ctrl
+  DWC_mobilestorage_CTest_sw:
+  - DWC MS CTest Sample SW
+  DWC_ralgen:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  Debug_HAPS-100:
+  - HAPS-100 Module 4F -1
+  Design-Budgeting:
+  - Design Compiler Elite Pkg
+  Design-Compiler:
+  - Design Compiler Elite Pkg
+  Design-Compiler-NXT:
+  - Design Compiler Elite Pkg
+  Design-Vision:
+  - Design Compiler Elite Pkg
+  DesignWare:
+  - Design Compiler Elite Pkg
+  - Fusion Compiler Elite Pkg
+  DesignWare-AMBA-VIP:
+  - DWC AMBA Fabric
+  - DWC APB Peripherals
+  DesignWare-LP:
+  - Design Compiler Elite Pkg
+  - Fusion Compiler Elite Pkg
+  DesignWare-Regression:
+  - DWC APB Advance Peripherals
+  DesignWare-VERA:
+  - DWC AMBA Fabric
+  - DWC APB Peripherals
+  - DWC APB Advance Peripherals
+  - Design Compiler Elite Pkg
+  - Fusion Compiler Elite Pkg
+  Designware-Basic:
+  - Design Compiler Elite Pkg
+  Digital-AGP:
+  - Design Compiler Elite Pkg
+  Digital-NX-AGP:
+  - Design Compiler Elite Pkg
+  Formality:
+  - Formality Base
+  Formality-Advanced:
+  - Formality Base
+  Formality-E1:
+  - Formality Base
+  Formality-Ultra:
+  - Formality Base
+  Fusion-Compiler-BE-NX:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-BE-NX-AGP:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-FE-NX:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-FE-NX-AGP:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-FP-NX:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-ML:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-NX:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-NX-AG:
+  - Fusion Compiler Elite Pkg
+  Fusion-Compiler-NX-AGP:
+  - Fusion Compiler Elite Pkg
+  Galaxy-Common:
+  - Design Compiler Elite Pkg
+  GalaxyConstraint:
+  - PrimeTime Elite
+  HAPS-100-AMBA-XTOR-MASTER:
+  - HAPS-100 Module 4F -1
+  HAPS-100-AMBA-XTOR-SLAVE:
+  - HAPS-100 Module 4F -1
+  HDL:
+  - Design Compiler Elite Pkg
+  HDL-Compiler:
+  - Design Compiler Elite Pkg
+  LMCSwift_Net:
+  - VCS Elite
+  MCE-Base:
+  - Design Compiler Elite Pkg
+  MDataPrep:
+  - StarRC Elite
+  MDynLink:
+  - StarRC Elite
+  Milkyway:
+  - StarRC Elite
+  Milkyway-Interface:
+  - Design Compiler Elite Pkg
+  - Formality Base
+  - PrimeTime Elite
+  Power-Optimization:
+  - Design Compiler Elite Pkg
+  PrimePower:
+  - PrimePower Base
+  PrimeTime:
+  - PrimeTime Elite
+  PrimeTime-ADV:
+  - PrimeTime Elite
+  PrimeTime-ADV-PLUS:
+  - PrimeTime Elite
+  PrimeTime-ELT:
+  - PrimeTime Elite
+  PrimeTime-SI:
+  - PrimeTime Elite
+  ProtoCompiler100:
+  - HAPS-100 Module 4F -1
+  ProtoCompiler100-RT:
+  - HAPS-100 Module 4F -1
+  ProtoCompilerMP:
+  - HAPS-100 Module 4F -1
+  RTL-Power-Analysis:
+  - Design Compiler Elite Pkg
+  RTL2GDS-Access:
+  - Fusion Compiler Elite Pkg
+  SG-Verdi-Plugin:
+  - VC SpyGlass Base
+  - VC SpyGlass Elite
+  SNPS_INDESIGN_RH_RAIL:
+  - Fusion Compiler Elite Pkg
+  SSS:
+  - DWC AMBA Fabric
+  STAR-RC2-AGP:
+  - StarRC Elite
+  STAR-RC2-NETLIST:
+  - StarRC Elite
+  STAR-RC2-PROBER:
+  - StarRC Elite
+  STAR-RC2-TCAD:
+  - StarRC Elite
+  STAR-RC2_PARASITIC_EXPLORER:
+  - StarRC Elite
+  STAR-RC2_ULTRAPLUS:
+  - StarRC Custom Add-On
+  STAR-RC2_ULTRAPLUS_CUSTOM_IACT:
+  - StarRC Custom Add-On
+  STAR-RC2_ULTRA_MANAGER:
+  - StarRC Elite
+  SUB-TYPEC-SVT:
+  - VC VIP Subsystem USB Type-C Base
+  SynLib-Eval:
+  - Design Compiler Elite Pkg
+  Test-ADV:
+  - TestMAX Advisor Base
+  Test-CTL-Model:
+  - Design Compiler Elite Pkg
+  - TestMAX DFT Base
+  Test-Compiler:
+  - Design Compiler Elite Pkg
+  - TestMAX DFT Base
+  Test-Compression-ATPG:
+  - TestMAX DFT Base
+  Test-Compression-Synthesis:
+  - TestMAX DFT Base
+  Test-CompressionP3-ATPG:
+  - TestMAX DFT Base
+  Test-CompressionP3-Syn:
+  - TestMAX DFT Base
+  Test-CompressionP5-Syn:
+  - TestMAX DFT Base
+  Test-CompressionPlus-ATPG:
+  - TestMAX DFT Base
+  Test-Conn:
+  - TestMAX Advisor Base
+  Test-Core-Integration:
+  - TestMAX DFT Base
+  Test-Core-Wrapper:
+  - Design Compiler Elite Pkg
+  Test-DFTC-TMAX:
+  - Design Compiler Elite Pkg
+  - Fusion Compiler Elite Pkg
+  - TestMAX DFT Base
+  Test-IEEE-Std-1149-1:
+  - TestMAX DFT Base
+  Test-LBIST-Synthesis:
+  - Design Compiler Elite Pkg
+  Test-MBIST-Integration:
+  - Design Compiler Elite Pkg
+  Test-RTL-Check:
+  - Design Compiler Elite Pkg
+  - TestMAX DFT Base
+  Test-RTL-Tristate:
+  - Design Compiler Elite Pkg
+  Test-STDVR:
+  - Design Compiler Elite Pkg
+  Test-ScanRoute:
+  - Design Compiler Elite Pkg
+  Test-VC:
+  - TestMAX Advisor Base
+  Test-Validate:
+  - Design Compiler Elite Pkg
+  - TestMAX DFT Base
+  VC-CONSTRAINTS-BASE:
+  - VC SpyGlass Constraints Add-on
+  VC-FORMAL-DPV-HDB:
+  - VC Formal DPV Base
+  VC-POWER-EST-BASE:
+  - PowerReplay Base
+  VC-POWER-REPLAY-COMPILE:
+  - PowerReplay Base
+  VC-POWER-REPLAY-RUNTIME:
+  - PowerReplay Base
+  VC-SG-1-Base-Pkg:
+  - VC SpyGlass Base
+  VC-SG-2-Elite-Base-Pkg:
+  - VC SpyGlass Elite
+  VC-SG-2-Elite-Pkg:
+  - VC SpyGlass Elite
+  VC-SG-RDC-Addon-Pkg:
+  - VC SpyGlass RDC Add-on
+  VC-SMART-SEARCH:
+  - VC Formal DPV Base
+  VC-STATIC-COMPILE:
+  - VC SpyGlass Base
+  - VC SpyGlass Elite
+  - VC Formal DPV Base
+  VC-STATIC-VERDI-PLUGIN:
+  - VC SpyGlass Base
+  - VC SpyGlass Elite
+  VCF-DPV-1-Base-Compile-Pkg:
+  - VC Formal DPV Base
+  VCF-DPV-1-Base-Runtime-Pkg:
+  - VC Formal DPV Base
+  VCFV-Verdi-Plugin:
+  - VC Formal DPV Base
+  VCS-2-Elite-Base-Compile-Pkg:
+  - VCS Elite
+  VCS-2-Elite-Base-Runtime-Pkg:
+  - VCS Elite
+  VCS-2-Elite-Compile-Pkg:
+  - VCS Elite
+  VCS-2-Elite-Runtime-Pkg:
+  - VCS Elite
+  VCSCompiler_Net:
+  - HAPS-100 Module 4F -1
+  VCSTools_Net:
+  - VCS Elite
+  VERDI_COMPILE:
+  - Verdi Elite
+  VHDL-Compiler:
+  - Design Compiler Elite Pkg
+  VHDL-Elaborator:
+  - HAPS-100 Module 4F -1
+  VIP-AMBA-AHB-SVT:
+  - DWC AMBA Fabric
+  - DWC AXI DMAC
+  - DWC PCIe 4.0 Premium AMBA II
+  - Design Compiler Elite Pkg
+  - DWC SD4.X MMC Host Controller
+  - DWC PCIe 3.0 Premium AMBA II
+  - Fusion Compiler Elite Pkg
+  - VC VIP AMBA AHB4 Base
+  VIP-AMBA-APB-SVT:
+  - DWC AMBA Fabric
+  - DWC APB Peripherals
+  - DWC APB Advance Peripherals
+  - VC VIP AMBA APB Base
+  - Design Compiler Elite Pkg
+  - DWC MIPI I3C Multi Role
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  - DWC MIPI DSI2 HP Device Combo Ctrl
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  - DWC MIPI CSI-2 V3 Device Ctrl Prem
+  - Fusion Compiler Elite Pkg
+  VIP-AMBA-AXI-SVT:
+  - DWC AMBA Fabric
+  - DWC AXI DMAC
+  - VC VIP AMBA AXI4 Base
+  - DWC PCIe 4.0 Premium AMBA II
+  - Design Compiler Elite Pkg
+  - DWC SD4.X MMC Host Controller
+  - DWC PCIe 3.0 Premium AMBA II
+  - Fusion Compiler Elite Pkg
+  VIP-AMBA-STREAM-SVT:
+  - DWC PCIe 4.0 Premium AMBA II
+  - DWC PCIe 3.0 Premium AMBA II
+  VIP-AMBA3-SVT:
+  - DWC VESA DSC Encoder ver 1.2a RTL
+  - DWC VESA DSC Decoder ver 1.2a RTL
+  VIP-CPHY-SVT:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  - DWC MIPI DSI2 HP Device Combo Ctrl
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  - DWC MIPI CSI-2 V3 Device Ctrl Prem
+  VIP-CSI2-SVT:
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  - DWC MIPI CSI-2 V3 Device Ctrl Prem
+  - VC VIP MIPI CSI-2 Base
+  VIP-DFI-SVT:
+  - DWC LPDDR5/4/4X PHY TSMC N5
+  VIP-DSI-SVT:
+  - DWC MIPI DSI2 HP Host Combo Ctrl
+  - DWC MIPI DSI2 HP Device Combo Ctrl
+  VIP-DSI2-SVT:
+  - VC VIP MIPI DSI2 Elite
+  VIP-EMMC-SVT:
+  - DWC SD4.X MMC Host Controller
+  VIP-I2C-SVT:
+  - VC VIP I2C Base
+  VIP-I3C-SVT:
+  - DWC MIPI I3C Multi Role
+  VIP-JTAG-SVT:
+  - DWC SD4.X MMC Host Controller
+  - VC VIP JTAG Base
+  VIP-LPDDR5-IIPPACK:
+  - DWC LPDDR5/4/4X Controller AFP
+  - DWC LPDDR5/4/4X PHY TSMC N5
+  VIP-LPDDR5-SVT:
+  - VC VIP LPDDR 5/4/3/2 Elite
+  VIP-PCIE-G3-OPT-SVT:
+  - DWC PCIe 3.0 Premium AMBA II
+  VIP-PCIE-G4-SVT:
+  - VC VIP PCIe Gen4 Elite
+  - DWC PCIe 4.0 Premium AMBA II
+  VIP-PCIE-SVT:
+  - DWC PCIe 3.0 Premium AMBA II
+  VIP-UART-SVT:
+  - VC VIP UART Base
+  VIP-USB32-SVT:
+  - VC VIP USB 3.2 Elite
+  VT_Assertions:
+  - HAPS-100 Module 4F -1
+  VT_Coverage:
+  - HAPS-100 Module 4F -1
+  VT_CoverageURG:
+  - Design Compiler Elite Pkg
+  - Fusion Compiler Elite Pkg
+  VT_Testbench:
+  - HAPS-100 Module 4F -1
+  VT_VCS_AMS_CoSimRuntime:
+  - VCS Elite
+  VT_VCS_Xprop:
+  - HAPS-100 Module 4F -1
+  VT_Visual:
+  - VCS Elite
+  Verdi-2-Elite-Pkg:
+  - Verdi Elite
+  VerdiCoverage:
+  - Verdi Elite
+  VerdiTransactionDebugUltra:
+  - Verdi Elite
+  adv_checker:
+  - VC SpyGlass RDC Add-on
+  - TestMAX Advisor Base
+  - VC SpyGlass Elite
+  - SpyGlass Power Explorer Add-on
+  - VC SpyGlass Constraints Add-on
+  constraints_SDCgen:
+  - VC SpyGlass Constraints Add-on
+  constraints_SDCmerge:
+  - VC SpyGlass Constraints Add-on
+  constraints_mgmt:
+  - VC SpyGlass Constraints Add-on
+  constraints_modemerge:
+  - VC SpyGlass Constraints Add-on
+  constraints_soc_abstraction:
+  - VC SpyGlass Constraints Add-on
+  constraintsso:
+  - VC SpyGlass Constraints Add-on
+  cover:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  cs2vh:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  dft_dsmso:
+  - TestMAX Advisor Base
+  dft_soc_abstraction:
+  - TestMAX Advisor Base
+  dftso:
+  - TestMAX Advisor Base
+  dwc_mipi_csi2_v3_host_plus:
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  dwc_mipi_csi2_v3_host_prem:
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  dwc_mipi_csi2_v3_host_stnd:
+  - DWC MIPI CSI-2 V3 Host Ctrl Prem
+  em_asap:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_cpf:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_dnwell:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_ikos:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_ntc:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_pg:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_star:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_test_nwell:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_ts05ff_elv:
+  - DWC Duet TSMC N5 ELV PVT Add-on
+  em_ts05ff_idr:
+  - DWC Duet TSMC N5
+  em_ts05ff_lv:
+  - DWC Duet TSMC N5 LV PVT Add-on
+  em_ts05ff_od:
+  - DWC Duet TSMC N5 OD PVT Add-on
+  em_ts05ff_sod:
+  - DWC Duet TSMC N5 SOD PVT Add-on
+  em_ts05ff_ulv:
+  - DWC Duet TSMC N5 ULV PVT Add-on
+  em_vdda:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  em_vddmin:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  gds2gds:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  gdsview:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  il2vh:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  integrator:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  lint_func:
+  - VC SpyGlass Elite
+  lint_soc_abstraction:
+  - VC SpyGlass Elite
+  mlwizard:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  mvdbgen:
+  - HAPS-100 Module 4F -1
+  pdt2prm:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  power_cge_regr:
+  - SpyGlass Power Explorer Add-on
+  power_estso:
+  - SpyGlass Power Explorer Add-on
+  power_high_perf:
+  - SpyGlass Power Explorer Add-on
+  power_rednso:
+  - SpyGlass Power Explorer Add-on
+  romtool:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  sr2vh:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  ts05p0g41p10asdvd01ms:
+  - DWC Duet TSMC N5
+  ts05p0g41p10asdvd01ms_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p10asdvd01ms_fe:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sacrl256s:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sacrl256s_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sacrl256s_fe:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sacul256s:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sacul256s_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sacul256s_fe:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sadcl02ms:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sadcl02ms_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sadcl02ms_fe:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sadul02ms:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sadul02ms_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sadul02ms_fe:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sagrl256s:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sagrl256s_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sagrl256s_fe:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sassl01ms:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sassl01ms_be:
+  - DWC Duet TSMC N5
+  ts05p0g41p11sassl01ms_fe:
+  - DWC Duet TSMC N5
+  ts05p0g42p11sacrl128s:
+  - DWC Duet TSMC N5
+  ts05p0g42p11sacrl128s_be:
+  - DWC Duet TSMC N5
+  ts05p0g42p11sacrl128s_fe:
+  - DWC Duet TSMC N5
+  ts05p0g42p11sacul256s:
+  - DWC Duet TSMC N5 2PUHD Add-on
+  ts05p0g42p11sacul256s_be:
+  - DWC Duet TSMC N5 2PUHD Add-on
+  ts05p0g42p11sacul256s_fe:
+  - DWC Duet TSMC N5 2PUHD Add-on
+  ts05p0g42p11sasul01ms:
+  - DWC Duet TSMC N5 2PUHD Add-on
+  ts05p0g42p11sasul01ms_be:
+  - DWC Duet TSMC N5 2PUHD Add-on
+  ts05p0g42p11sasul01ms_fe:
+  - DWC Duet TSMC N5 2PUHD Add-on
+  ts05p0g42p22sadsl512s:
+  - DWC Duet TSMC N5
+  ts05p0g42p22sadsl512s_be:
+  - DWC Duet TSMC N5
+  ts05p0g42p22sadsl512s_fe:
+  - DWC Duet TSMC N5
+  ts07n0g41p10asdvd01ms:
+  - DWC Duet TSMC N7
+  ts07n0g41p10asdvd01ms_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p10asdvd01ms_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sacrl256s:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sacrl256s_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sacrl256s_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sacul10ks:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sacul10ks_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sacul10ks_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sadcl02ms:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sadcl02ms_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sadcl02ms_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sadul02ms:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sadul02ms_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sadul02ms_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sarel256s:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sarel256s_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sarel256s_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sasrl256s:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sasrl256s_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sasrl256s_fe:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sassl01ms:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sassl01ms_be:
+  - DWC Duet TSMC N7
+  ts07n0g41p11sassl01ms_fe:
+  - DWC Duet TSMC N7
+  ts07n0g42p11sacul256s:
+  - DWC Duet TSMC N7 2PUHD Add-on
+  ts07n0g42p11sacul256s_be:
+  - DWC Duet TSMC N7 2PUHD Add-on
+  ts07n0g42p11sacul256s_fe:
+  - DWC Duet TSMC N7 2PUHD Add-on
+  ts07n0g42p11sadrl128s:
+  - DWC Duet TSMC N7
+  ts07n0g42p11sadrl128s_be:
+  - DWC Duet TSMC N7
+  ts07n0g42p11sadrl128s_fe:
+  - DWC Duet TSMC N7
+  ts07n0g42p11sasul01ms:
+  - DWC Duet TSMC N7 2PUHD Add-on
+  ts07n0g42p11sasul01ms_be:
+  - DWC Duet TSMC N7 2PUHD Add-on
+  ts07n0g42p11sasul01ms_fe:
+  - DWC Duet TSMC N7 2PUHD Add-on
+  ts07n0g42p22sadsl01ms:
+  - DWC Duet TSMC N7
+  ts07n0g42p22sadsl01ms_be:
+  - DWC Duet TSMC N7
+  ts07n0g42p22sadsl01ms_fe:
+  - DWC Duet TSMC N7
+  ts5ff_1p8v_basekit:
+  - DWC IO TSMC N5 1.2V/1.8V I3C CDM7A
+  ts5ff_1p8v_emmc_sd_phy:
+  - DWC SD30 EMMC5X TSMC N5
+  ts5ff_1p8v_i3c:
+  - DWC IO TSMC N5 1.2V/1.8V I3C CDM7A
+  ts5ff_2p5v_basekit:
+  - DWC IO TSMC N5 GPIO with 2.5V Failsafe
+  ts5ff_2p5v_gpio_2p5vfs:
+  - DWC IO TSMC N5 GPIO with 2.5V Failsafe
+  turbo_struct:
+  - VC SpyGlass Elite
+  txvso:
+  - VC SpyGlass Constraints Add-on
+  vb2vh:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  vmc:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  xltt:
+  - DWC Duet TSMC N7
+  - DWC Duet TSMC N5
+  zs_Compil:
+  - HAPS-100 Module 4F -1
+  zs_RNMCompile:
+  - HAPS-100 Module 4F -1
+xpdlmd:
+  SnpExpert:
+  - SnpExpert
+  SnpExpertChannel:
+  - SnpExpert
+  SnpExpertConnector:
+  - SnpExpert
+  SnpExpertDDR:
+  - SnpExpert
+  SnpExpertDeembed:
+  - SnpExpert
+  SnpExpertDkdfExt:
+  - SnpExpert
+  SnpExpertEyeDiagram:
+  - SnpExpert
+  SnpExpertTDR:
+  - SnpExpert
+  SnpExpertTODADV:
+  - SnpExpert
+  SnpExpertUtil:
+  - SnpExpert
+  SnpExpertVNA:
+  - SnpExpert

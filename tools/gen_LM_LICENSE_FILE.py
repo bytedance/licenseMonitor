@@ -56,6 +56,7 @@ def get_LM_LICENSE_FILE_setting(module_files_dir_list):
                 module_file = str(root) + '/' + str(file)
 
                 with open(module_file, 'r') as MF:
+                    print('>>> Parse "' + str(module_file) + '"')
                     mark = False
 
                     for line in MF.readlines():
@@ -66,12 +67,16 @@ def get_LM_LICENSE_FILE_setting(module_files_dir_list):
                                 break
                         else:
                             for license_server in re.findall(r'\d+@\S+', line):
+                                print('    Find ' + str(license_server))
                                 if license_server not in LM_LICENSE_FILE_list:
                                     LM_LICENSE_FILE_list.append(license_server)
 
     if not LM_LICENSE_FILE_list:
         print('*Warning*: Not get any valid LM_LICENSE_FILE setting.')
     else:
+        print('')
+        print('>>> Checking license server status ...')
+
         # Remove DOWN license servers.
         os.environ['LM_LICENSE_FILE'] = ':'.join(LM_LICENSE_FILE_list)
         my_get_license_info = common_license.GetLicenseInfo(lmstat_path=config.lmstat_path, bsub_command=config.lmstat_bsub_command)
@@ -105,11 +110,16 @@ def write_LM_LICENSE_FILE(LM_LICENSE_FILE_list, LM_LICENSE_FILE_file):
     """
     if LM_LICENSE_FILE_list:
         with open(LM_LICENSE_FILE_file, 'w') as LF:
+            print('')
+            print('>>> Write "' + str(LM_LICENSE_FILE_file) + '"')
+
             for LM_LICENSE_FILE_setting in LM_LICENSE_FILE_list:
+                print('    ' + str(LM_LICENSE_FILE_setting))
                 LF.write(str(LM_LICENSE_FILE_setting) + '\n')
 
         os.chmod(LM_LICENSE_FILE_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
 
+        print('')
         print('* LM_LICENSE_FILE is saved on "' + str(LM_LICENSE_FILE_file) + '".')
 
 

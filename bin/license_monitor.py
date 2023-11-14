@@ -457,7 +457,7 @@ class MainWindow(QMainWindow):
                                     else:
                                         for sample_date in sample_date_dic.keys():
                                             if sample_date not in product_utilization_dic[product][vendor_daemon].keys():
-                                                product_utilization_dic[product][vendor_daemon].append(sample_date_dic[sample_date])
+                                                product_utilization_dic[product][vendor_daemon].setdefault(sample_date, sample_date_dic[sample_date])
                                             elif product_utilization_dic[product][vendor_daemon][sample_date]['utilization'] < sample_date_dic[sample_date]['utilization']:
                                                 product_utilization_dic[product][vendor_daemon][sample_date]['utilization'] = sample_date_dic[sample_date]['utilization']
 
@@ -516,7 +516,7 @@ class MainWindow(QMainWindow):
                                     else:
                                         for project in project_dic.keys():
                                             if project not in product_cost_dic[product][vendor_daemon].keys():
-                                                product_cost_dic[product][vendor_daemon].append(project_dic[project])
+                                                product_cost_dic[product][vendor_daemon].setdefault(project, project_dic[project])
                                             else:
                                                 product_cost_dic[product][vendor_daemon][project] += project_dic[project]
 

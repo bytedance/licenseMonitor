@@ -99,12 +99,13 @@ class Sampling:
         """
         if not os.path.exists(db_path):
             try:
+                print('    Create directory "' + str(db_path) + '".')
                 os.makedirs(db_path, mode=0o755)
             except Exception as error:
                 common.print_error('*Error*: Failed on creating database directory "' + str(db_path) + '".')
                 common.print_error('         ' + str(error))
 
-                if not re.search('File exists', error):
+                if not re.search('File exists', str(error)):
                     sys.exit(1)
 
     def copy_file(self, source_file, target_dir):
@@ -132,7 +133,9 @@ class Sampling:
         # Get project_setting_dic.
         copy_mark = False
         project_setting_db_path = str(config.db_path) + '/project_setting'
+
         self.create_db_path(project_setting_db_path)
+
         project_setting_dic = common_license.parse_project_setting_db_path(project_setting_db_path)
 
         if not project_setting_dic:
@@ -154,6 +157,7 @@ class Sampling:
         if copy_mark:
             current_time = datetime.datetime.today().strftime('%Y%m%d%H%M%S')
             current_project_setting_db_path = str(project_setting_db_path) + '/' + str(current_time)
+
             self.create_db_path(current_project_setting_db_path)
             self.copy_file(project_list_file, current_project_setting_db_path)
             self.copy_file(project_execute_host_file, current_project_setting_db_path)

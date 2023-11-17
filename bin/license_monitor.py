@@ -95,6 +95,10 @@ class MainWindow(QMainWindow):
             common.print_warning('*Warning*: No "administrators" is specified on config file, some functions are limited.')
             self.administrator_list = []
 
+        # Notice no-admin user.
+        if USER not in self.administrator_list:
+            common.print_warning('*Warning*: You are not administrator, cannot access some function!')
+
         # Get project related information.
         project_list_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list'
         self.project_list = common_license.parse_project_list_file(project_list_file)
@@ -391,22 +395,25 @@ class MainWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
         # Setup
-        enable_utilization_product_action = QAction('Enable Utilization Product', self, checkable=True)
-        enable_utilization_product_action.triggered.connect(self.func_enable_utilization_product)
+        if USER in self.administrator_list:
+            enable_utilization_product_action = QAction('Enable Utilization Product', self, checkable=True)
+            enable_utilization_product_action.triggered.connect(self.func_enable_utilization_product)
 
-        enable_cost_product_action = QAction('Enable Cost Product', self, checkable=True)
-        enable_cost_product_action.triggered.connect(self.func_enable_cost_product)
+            enable_cost_product_action = QAction('Enable Cost Product', self, checkable=True)
+            enable_cost_product_action.triggered.connect(self.func_enable_cost_product)
 
-        enable_cost_others_project_action = QAction('Enable Cost Others Project', self, checkable=True)
-        enable_cost_others_project_action.triggered.connect(self.func_enable_cost_others_project)
+            enable_cost_others_project_action = QAction('Enable Cost Others Project', self, checkable=True)
+            enable_cost_others_project_action.triggered.connect(self.func_enable_cost_others_project)
 
-        if self.enable_cost_others_project:
-            enable_cost_others_project_action.setChecked(True)
+            if self.enable_cost_others_project:
+                enable_cost_others_project_action.setChecked(True)
 
         setup_menu = menubar.addMenu('Setup')
-        setup_menu.addAction(enable_utilization_product_action)
-        setup_menu.addAction(enable_cost_product_action)
-        setup_menu.addAction(enable_cost_others_project_action)
+
+        if USER in self.administrator_list:
+            setup_menu.addAction(enable_utilization_product_action)
+            setup_menu.addAction(enable_cost_product_action)
+            setup_menu.addAction(enable_cost_others_project_action)
 
         # Help
         version_action = QAction('Version', self)

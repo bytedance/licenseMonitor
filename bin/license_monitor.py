@@ -2233,11 +2233,12 @@ licenseMonitor is an open source software for EDA software license information d
         """
         utilization_dic = self.get_utilization_info()
 
-        if self.enable_utilization_product:
-            utilization_dic = self.switch_product_on_utilization_dic(utilization_dic)
+        if utilization_dic:
+            if self.enable_utilization_product:
+                utilization_dic = self.switch_product_on_utilization_dic(utilization_dic)
 
-        self.gen_utilization_tab_table(utilization_dic)
-        self.update_utilization_tab_frame1(utilization_dic)
+            self.gen_utilization_tab_table(utilization_dic)
+            self.update_utilization_tab_frame1(utilization_dic)
 
     def get_utilization_info(self):
         """

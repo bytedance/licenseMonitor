@@ -12,12 +12,8 @@ import datetime
 import argparse
 
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QAction, qApp, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox, QHeaderView, QDateEdit, QFileDialog, QMenu
-from PyQt5.QtGui import QBrush, QFont
+from PyQt5.QtGui import QIcon, QBrush, QFont
 from PyQt5.QtCore import Qt, QThread, QDate
-
-from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
 
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
@@ -69,15 +65,6 @@ def read_args():
     return (args.feature, args.user, args.tab)
 
 
-class FigureCanvas(FigureCanvasQTAgg):
-    """
-    Generate a new figure canvas.
-    """
-    def __init__(self):
-        self.figure = Figure()
-        super().__init__(self.figure)
-
-
 class MainWindow(QMainWindow):
     """
     Main window of licenseMonitor.
@@ -85,6 +72,15 @@ class MainWindow(QMainWindow):
     def __init__(self, specified_feature, specified_user, specified_tab):
         super().__init__()
         self.license_dic = {}
+
+        # Enable detail information on UTILIZATION tab.
+        self.enable_utilization_detail = False
+
+        # Enable "product" instead of "feature".
+        self.enable_utilization_product = False
+        self.enable_cost_product = False
+
+        # Basic setting.
         self.db_dic = self.get_db_info()
         self.license_dic_second = 0
 
@@ -96,7 +92,7 @@ class MainWindow(QMainWindow):
             self.administrator_list = []
 
         # Notice no-admin user.
-        if USER not in self.administrator_list:
+        if ('all' not in self.administrator_list) and ('ALL' not in self.administrator_list) and (USER not in self.administrator_list):
             common.print_warning('*Warning*: You are not administrator, cannot access some function!')
 
         # Get project related information.
@@ -129,10 +125,6 @@ class MainWindow(QMainWindow):
         self.cost_white_product_list = self.parse_feature_product_filter_file('cost', 'white', 'product')
         self.cost_black_product_list = self.parse_feature_product_filter_file('cost', 'black', 'product')
 
-        # Enable "product" instead of "feature".
-        self.enable_utilization_product = False
-        self.enable_cost_product = False
-
         # Enable "others" project on COST tab.
         if hasattr(config, 'enable_cost_others_project'):
             self.enable_cost_others_project = config.enable_cost_others_project
@@ -151,7 +143,7 @@ class MainWindow(QMainWindow):
             self.expires_tab_feature_line.setText(specified_feature)
             self.usage_tab_feature_line.setText(specified_feature)
 
-            if USER in self.administrator_list:
+            if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
                 self.utilization_tab_feature_line.setText(specified_feature)
                 self.cost_tab_feature_line.setText(specified_feature)
 
@@ -168,7 +160,7 @@ class MainWindow(QMainWindow):
                 self.filter_expires_tab_license_feature(get_license_info=False)
                 self.filter_usage_tab_license_feature(get_license_info=False)
 
-                if USER in self.administrator_list:
+                if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
                     self.filter_utilization_tab()
                     self.filter_cost_tab()
 
@@ -192,16 +184,16 @@ class MainWindow(QMainWindow):
         # Print loading license informaiton message.
         current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        print('* [' + str(current_time) + '] Loading license information, please wait a moment ...')
+        print('* [' + str(current_time) + '] Loading license info, please wait a moment ...')
 
         # Print loading license informaiton message with GUI.
-        my_show_message = ShowMessage('Info', 'Loading license information, please wait a moment ...')
+        my_show_message = ShowMessage('Info', 'Loading license info, please wait a moment ...')
         my_show_message.start()
 
         # Get self.license_dic.
         LM_LICENSE_FILE_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/LM_LICENSE_FILE'
 
-        if os.path.exists(LM_LICENSE_FILE_file) and (USER in self.administrator_list):
+        if os.path.exists(LM_LICENSE_FILE_file) and (('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list)):
             os.environ['LM_LICENSE_FILE'] = ''
 
             with open(LM_LICENSE_FILE_file, 'r') as LLF:
@@ -266,7 +258,7 @@ class MainWindow(QMainWindow):
 
     def get_db_info(self):
         """
-        Get utilization/usage database information.
+        Get curve/utilization/usage database information.
         """
         db_dic = {}
 
@@ -284,17 +276,25 @@ class MainWindow(QMainWindow):
 
                         for vendor_daemon in os.listdir(license_server_path):
                             vendor_daemon_path = str(license_server_path) + '/' + str(vendor_daemon)
+                            curve_db_path = str(vendor_daemon_path) + '/utilization.db'
                             usage_db_path = str(vendor_daemon_path) + '/usage.db'
-                            utilization_day_db_path = str(vendor_daemon_path) + '/utilization_day.db'
+
+                            if self.enable_utilization_detail:
+                                utilization_db_path = str(vendor_daemon_path) + '/utilization.db'
+                            else:
+                                utilization_db_path = str(vendor_daemon_path) + '/utilization_day.db'
 
                             if os.path.isdir(vendor_daemon_path):
                                 db_dic[license_server].setdefault(vendor_daemon, {})
 
+                                if os.path.exists(curve_db_path):
+                                    db_dic[license_server][vendor_daemon].setdefault('curve', curve_db_path)
+
                                 if os.path.exists(usage_db_path):
                                     db_dic[license_server][vendor_daemon].setdefault('usage', usage_db_path)
 
-                                if os.path.exists(utilization_day_db_path):
-                                    db_dic[license_server][vendor_daemon].setdefault('utilization', utilization_day_db_path)
+                                if os.path.exists(utilization_db_path):
+                                    db_dic[license_server][vendor_daemon].setdefault('utilization', utilization_db_path)
 
         return db_dic
 
@@ -332,7 +332,8 @@ class MainWindow(QMainWindow):
         self.expires_tab = QWidget()
         self.usage_tab = QWidget()
 
-        if USER in self.administrator_list:
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            self.curve_tab = QWidget()
             self.utilization_tab = QWidget()
             self.cost_tab = QWidget()
 
@@ -342,7 +343,8 @@ class MainWindow(QMainWindow):
         self.main_tab.addTab(self.expires_tab, 'EXPIRES')
         self.main_tab.addTab(self.usage_tab, 'USAGE')
 
-        if USER in self.administrator_list:
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            self.main_tab.addTab(self.curve_tab, 'CURVE')
             self.main_tab.addTab(self.utilization_tab, 'UTILIZATION')
             self.main_tab.addTab(self.cost_tab, 'COST')
 
@@ -355,13 +357,16 @@ class MainWindow(QMainWindow):
         self.gen_expires_tab()
         self.gen_usage_tab()
 
-        if USER in self.administrator_list:
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            self.gen_curve_tab()
             self.gen_utilization_tab()
             self.gen_cost_tab()
 
         # Show main window
         self.setWindowTitle('licenseMonitor')
         self.resize(1200, 580)
+        self.setWindowTitle('licenseMonitor')
+        self.setWindowIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/monitor.ico'))
         common_pyqt5.center_window(self)
 
     def switch_tab(self, specified_tab):
@@ -375,7 +380,8 @@ class MainWindow(QMainWindow):
                    'USAGE': self.usage_tab,
                   }
 
-        if USER in self.administrator_list:
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            tab_dic['CURVE'] = self.curve_tab,
             tab_dic['UTILIZATION'] = self.utilization_tab,
             tab_dic['COST'] = self.cost_tab,
 
@@ -388,14 +394,57 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
 
         # File
+        export_server_table_action = QAction('Export server table', self)
+        export_server_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+        export_server_table_action.triggered.connect(self.export_server_table)
+
+        export_feature_table_action = QAction('Export feature table', self)
+        export_feature_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+        export_feature_table_action.triggered.connect(self.export_feature_table)
+
+        export_expires_table_action = QAction('Export expires table', self)
+        export_expires_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+        export_expires_table_action.triggered.connect(self.export_expires_table)
+
+        export_usage_table_action = QAction('Export usage table', self)
+        export_usage_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+        export_usage_table_action.triggered.connect(self.export_usage_table)
+
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            export_curve_table_action = QAction('Export curve table', self)
+            export_curve_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+            export_curve_table_action.triggered.connect(self.export_curve_table)
+
+            export_utilization_table_action = QAction('Export utilization table', self)
+            export_utilization_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+            export_utilization_table_action.triggered.connect(self.export_utilization_table)
+
+            export_cost_table_action = QAction('Export cost table', self)
+            export_cost_table_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/save.png'))
+            export_cost_table_action.triggered.connect(self.export_cost_table)
+
         exit_action = QAction('Exit', self)
+        exit_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/exit.png'))
         exit_action.triggered.connect(qApp.quit)
 
         file_menu = menubar.addMenu('File')
+        file_menu.addAction(export_server_table_action)
+        file_menu.addAction(export_feature_table_action)
+        file_menu.addAction(export_expires_table_action)
+        file_menu.addAction(export_usage_table_action)
+
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            file_menu.addAction(export_curve_table_action)
+            file_menu.addAction(export_utilization_table_action)
+            file_menu.addAction(export_cost_table_action)
+
         file_menu.addAction(exit_action)
 
         # Setup
-        if USER in self.administrator_list:
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            enable_utilization_detail_action = QAction('Enable Utilization Detail', self, checkable=True)
+            enable_utilization_detail_action.triggered.connect(self.func_enable_utilization_detail)
+
             enable_utilization_product_action = QAction('Enable Utilization Product', self, checkable=True)
             enable_utilization_product_action.triggered.connect(self.func_enable_utilization_product)
 
@@ -410,21 +459,37 @@ class MainWindow(QMainWindow):
 
         setup_menu = menubar.addMenu('Setup')
 
-        if USER in self.administrator_list:
+        if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
+            setup_menu.addAction(enable_utilization_detail_action)
             setup_menu.addAction(enable_utilization_product_action)
             setup_menu.addAction(enable_cost_product_action)
             setup_menu.addAction(enable_cost_others_project_action)
 
         # Help
         version_action = QAction('Version', self)
+        version_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/version.png'))
         version_action.triggered.connect(self.show_version)
 
         about_action = QAction('About licenseMonitor', self)
+        about_action.setIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/about.png'))
         about_action.triggered.connect(self.show_about)
 
         help_menu = menubar.addMenu('Help')
         help_menu.addAction(version_action)
         help_menu.addAction(about_action)
+
+    def func_enable_utilization_detail(self, state):
+        """
+        Show detail information for utilization curve on UTILIZATION tab.
+        """
+        if state:
+            self.enable_utilization_detail = True
+            self.db_dic = self.get_db_info()
+            self.utilization_tab_begin_date_edit.setDate(QDate.currentDate().addDays(-7))
+        else:
+            self.enable_utilization_detail = False
+            self.db_dic = self.get_db_info()
+            self.utilization_tab_begin_date_edit.setDate(QDate.currentDate().addMonths(-1))
 
     def func_enable_utilization_product(self, state):
         """
@@ -434,8 +499,6 @@ class MainWindow(QMainWindow):
             self.enable_utilization_product = True
         else:
             self.enable_utilization_product = False
-
-        self.filter_utilization_tab()
 
     def switch_product_on_utilization_dic(self, utilization_dic):
         """
@@ -494,8 +557,6 @@ class MainWindow(QMainWindow):
             self.enable_cost_product = True
         else:
             self.enable_cost_product = False
-
-        self.filter_cost_tab()
 
     def switch_product_on_cost_dic(self, cost_dic):
         """
@@ -560,13 +621,11 @@ class MainWindow(QMainWindow):
             if 'others' in self.project_list:
                 self.project_list.remove('others')
 
-        self.filter_cost_tab()
-
     def show_version(self):
         """
         Show licenseMonitor version information.
         """
-        version = 'V1.2'
+        version = 'V1.3'
         QMessageBox.about(self, 'licenseMonitor', 'Version: ' + str(version) + '        ')
 
     def show_about(self):
@@ -600,9 +659,9 @@ licenseMonitor is an open source software for EDA software license information d
         self.server_tab_table.setShowGrid(True)
         self.server_tab_table.setSortingEnabled(True)
         self.server_tab_table.setColumnCount(0)
-        server_tab_table_title_list = ['Server', 'Server_Status', 'Server_Version', 'License_Files', 'Vendor', 'Vendor_Status', 'Vendor_Version']
-        self.server_tab_table.setColumnCount(len(server_tab_table_title_list))
-        self.server_tab_table.setHorizontalHeaderLabels(server_tab_table_title_list)
+        self.server_tab_table_title_list = ['Server', 'Server_Status', 'Server_Version', 'License_Files', 'Vendor', 'Vendor_Status', 'Vendor_Version']
+        self.server_tab_table.setColumnCount(len(self.server_tab_table_title_list))
+        self.server_tab_table.setHorizontalHeaderLabels(self.server_tab_table_title_list)
 
         # Set column width
         self.server_tab_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -718,8 +777,6 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.feature_tab_table = QTableWidget(self.feature_tab)
         self.feature_tab_table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.feature_tab_table.customContextMenuRequested.connect(self.generate_feature_menu)
-        self.feature_tab_table.itemClicked.connect(self.feature_tab_table_check_click)
 
         # Grid
         feature_tab_grid = QGridLayout()
@@ -735,6 +792,8 @@ licenseMonitor is an open source software for EDA software license information d
         # Generate self.feature_tab_frame and self.feature_tab_table
         self.gen_feature_tab_frame()
         self.gen_feature_tab_table(self.license_dic)
+        self.feature_tab_table.customContextMenuRequested.connect(self.generate_feature_menu)
+        self.feature_tab_table.itemClicked.connect(self.feature_tab_table_check_click)
 
     def generate_feature_menu(self, pos):
         menu = QMenu()
@@ -830,6 +889,7 @@ licenseMonitor is an open source software for EDA software license information d
         self.feature_tab_show_combo.clear()
         self.feature_tab_show_combo.addItem('ALL')
         self.feature_tab_show_combo.addItem('IN_USE')
+        self.feature_tab_show_combo.addItem('NOT_USED')
 
     def set_feature_tab_server_combo(self):
         self.feature_tab_server_combo.clear()
@@ -930,7 +990,8 @@ licenseMonitor is an open source software for EDA software license information d
         self.feature_tab_table.setSortingEnabled(True)
         self.feature_tab_table.setColumnCount(0)
         self.feature_tab_table.setColumnCount(5)
-        self.feature_tab_table.setHorizontalHeaderLabels(['Server', 'Vendor', 'Feature', 'Total_License', 'In_Use_License'])
+        self.feature_tab_table_title_list = ['Server', 'Vendor', 'Feature', 'Total_License', 'In_Use_License']
+        self.feature_tab_table.setHorizontalHeaderLabels(self.feature_tab_table_title_list)
 
         self.feature_tab_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.feature_tab_table.setColumnWidth(1, 120)
@@ -1147,7 +1208,8 @@ licenseMonitor is an open source software for EDA software license information d
         self.expires_tab_table.setSortingEnabled(True)
         self.expires_tab_table.setColumnCount(0)
         self.expires_tab_table.setColumnCount(6)
-        self.expires_tab_table.setHorizontalHeaderLabels(['Server', 'Vendor', 'Feature', 'Version', 'License_Num', 'Expires'])
+        self.expires_tab_table_title_list = ['Server', 'Vendor', 'Feature', 'Version', 'License_Num', 'Expires']
+        self.expires_tab_table.setHorizontalHeaderLabels(self.expires_tab_table_title_list)
 
         self.expires_tab_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.expires_tab_table.setColumnWidth(1, 100)
@@ -1235,8 +1297,6 @@ licenseMonitor is an open source software for EDA software license information d
         self.usage_tab_frame.setFrameShape(QFrame.Box)
 
         self.usage_tab_table = QTableWidget(self.usage_tab)
-        self.usage_tab_table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.usage_tab_table.customContextMenuRequested.connect(self.generate_usage_menu)
 
         # Grid
         usage_tab_grid = QGridLayout()
@@ -1252,6 +1312,8 @@ licenseMonitor is an open source software for EDA software license information d
         # Generate self.usage_tab_frame and self.usage_tab_table.
         self.gen_usage_tab_frame()
         self.gen_usage_tab_table(self.license_dic)
+        self.usage_tab_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.usage_tab_table.customContextMenuRequested.connect(self.generate_usage_menu)
 
     def gen_usage_tab_frame(self):
         # License Server
@@ -1456,7 +1518,8 @@ licenseMonitor is an open source software for EDA software license information d
         self.usage_tab_table.setSortingEnabled(True)
         self.usage_tab_table.setColumnCount(0)
         self.usage_tab_table.setColumnCount(9)
-        self.usage_tab_table.setHorizontalHeaderLabels(['Server', 'Vendor', 'Feature', 'User', 'Submit_Host', 'Execute_Host', 'Num', 'Version', 'Start_Time'])
+        self.usage_tab_table_title_list = ['Server', 'Vendor', 'Feature', 'User', 'Submit_Host', 'Execute_Host', 'Num', 'Version', 'Start_Time']
+        self.usage_tab_table.setHorizontalHeaderLabels(self.usage_tab_table_title_list)
 
         self.usage_tab_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.usage_tab_table.setColumnWidth(1, 85)
@@ -1531,10 +1594,472 @@ licenseMonitor is an open source software for EDA software license information d
                         self.usage_tab_table.setItem(row, 8, item)
 # For USAGE TAB (end) #
 
+# For CURVE TAB (start) #
+    def gen_curve_tab(self):
+        """
+        Generate CURVE tab, show license feature curve information.
+        """
+        self.curve_tab_frame0 = QFrame(self.curve_tab)
+        self.curve_tab_frame0.setFrameShadow(QFrame.Raised)
+        self.curve_tab_frame0.setFrameShape(QFrame.Box)
+
+        self.curve_tab_table = QTableWidget(self.curve_tab)
+        self.curve_tab_table.itemClicked.connect(self.curve_tab_table_click)
+
+        self.curve_tab_frame1 = QFrame(self.curve_tab)
+        self.curve_tab_frame1.setFrameShadow(QFrame.Raised)
+        self.curve_tab_frame1.setFrameShape(QFrame.Box)
+
+        # Grid
+        curve_tab_grid = QGridLayout()
+
+        curve_tab_grid.addWidget(self.curve_tab_frame0, 0, 0, 1, 2)
+        curve_tab_grid.addWidget(self.curve_tab_table, 1, 0)
+        curve_tab_grid.addWidget(self.curve_tab_frame1, 1, 1)
+
+        curve_tab_grid.setRowStretch(0, 1)
+        curve_tab_grid.setRowStretch(1, 10)
+
+        curve_tab_grid.setColumnStretch(0, 2)
+        curve_tab_grid.setColumnStretch(1, 3)
+
+        self.curve_tab.setLayout(curve_tab_grid)
+
+        # Generate self.curve_tab_frame0, self.curve_tab_table and self.curve_tab_frame1.
+        self.gen_curve_tab_frame0()
+        self.gen_curve_tab_table()
+        self.gen_curve_tab_frame1()
+        self.update_curve_tab_frame1()
+
+    def gen_curve_tab_frame0(self):
+        # License Server
+        curve_tab_server_label = QLabel('Server', self.curve_tab_frame0)
+        curve_tab_server_label.setStyleSheet('font-weight: bold;')
+        curve_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.curve_tab_server_combo = QComboBox(self.curve_tab_frame0)
+        self.set_curve_tab_server_combo()
+        self.curve_tab_server_combo.activated.connect(self.curve_tab_server_combo_changed)
+
+        # License vendor daemon
+        curve_tab_vendor_label = QLabel('Vendor', self.curve_tab_frame0)
+        curve_tab_vendor_label.setStyleSheet('font-weight: bold;')
+        curve_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.curve_tab_vendor_combo = QComboBox(self.curve_tab_frame0)
+        self.set_curve_tab_vendor_combo()
+
+        # License Feature
+        curve_tab_feature_label = QLabel('Feature', self.curve_tab_frame0)
+        curve_tab_feature_label.setStyleSheet('font-weight: bold;')
+        curve_tab_feature_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.curve_tab_feature_line = QLineEdit()
+        self.curve_tab_feature_line.returnPressed.connect(self.filter_curve_tab)
+
+        # Check button
+        curve_tab_check_button = QPushButton('Check', self.curve_tab_frame0)
+        curve_tab_check_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
+        curve_tab_check_button.clicked.connect(self.filter_curve_tab)
+
+        # Begin_Data
+        curve_tab_begin_date_label = QLabel('Begin_Date', self.curve_tab_frame0)
+        curve_tab_begin_date_label.setStyleSheet("font-weight: bold;")
+        curve_tab_begin_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.curve_tab_begin_date_edit = QDateEdit(self.curve_tab_frame0)
+        self.curve_tab_begin_date_edit.setDisplayFormat('yyyy-MM-dd')
+        self.curve_tab_begin_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
+        self.curve_tab_begin_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
+        self.curve_tab_begin_date_edit.setCalendarPopup(True)
+        self.curve_tab_begin_date_edit.setDate(QDate.currentDate().addDays(-7))
+
+        # End_Data
+        curve_tab_end_date_label = QLabel('End_Date', self.curve_tab_frame0)
+        curve_tab_end_date_label.setStyleSheet("font-weight: bold;")
+        curve_tab_end_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.curve_tab_end_date_edit = QDateEdit(self.curve_tab_frame0)
+        self.curve_tab_end_date_edit.setDisplayFormat('yyyy-MM-dd')
+        self.curve_tab_end_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
+        self.curve_tab_end_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
+        self.curve_tab_end_date_edit.setCalendarPopup(True)
+        self.curve_tab_end_date_edit.setDate(QDate.currentDate())
+
+        # Empty label
+        curve_tab_empty_label = QLabel('', self.curve_tab_frame0)
+
+        # Export button
+        curve_tab_export_button = QPushButton('Export', self.curve_tab_frame0)
+        curve_tab_export_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
+        curve_tab_export_button.clicked.connect(self.export_curve_table)
+
+        # self.curve_tab_frame0 - Grid
+        curve_tab_frame0_grid = QGridLayout()
+
+        curve_tab_frame0_grid.addWidget(curve_tab_server_label, 0, 0)
+        curve_tab_frame0_grid.addWidget(self.curve_tab_server_combo, 0, 1)
+        curve_tab_frame0_grid.addWidget(curve_tab_vendor_label, 0, 2)
+        curve_tab_frame0_grid.addWidget(self.curve_tab_vendor_combo, 0, 3)
+        curve_tab_frame0_grid.addWidget(curve_tab_feature_label, 0, 4)
+        curve_tab_frame0_grid.addWidget(self.curve_tab_feature_line, 0, 5)
+        curve_tab_frame0_grid.addWidget(curve_tab_check_button, 0, 6)
+        curve_tab_frame0_grid.addWidget(curve_tab_begin_date_label, 1, 0)
+        curve_tab_frame0_grid.addWidget(self.curve_tab_begin_date_edit, 1, 1)
+        curve_tab_frame0_grid.addWidget(curve_tab_end_date_label, 1, 2)
+        curve_tab_frame0_grid.addWidget(self.curve_tab_end_date_edit, 1, 3)
+        curve_tab_frame0_grid.addWidget(curve_tab_empty_label, 1, 4, 1, 2)
+        curve_tab_frame0_grid.addWidget(curve_tab_export_button, 1, 6)
+
+        curve_tab_frame0_grid.setColumnStretch(0, 1)
+        curve_tab_frame0_grid.setColumnStretch(1, 1)
+        curve_tab_frame0_grid.setColumnStretch(2, 1)
+        curve_tab_frame0_grid.setColumnStretch(3, 1)
+        curve_tab_frame0_grid.setColumnStretch(4, 1)
+        curve_tab_frame0_grid.setColumnStretch(5, 1)
+        curve_tab_frame0_grid.setColumnStretch(6, 1)
+
+        self.curve_tab_frame0.setLayout(curve_tab_frame0_grid)
+
+    def set_curve_tab_server_combo(self):
+        """
+        Set (initialize) self.curve_tab_server_combo.
+        """
+        self.curve_tab_server_combo.clear()
+
+        license_server_list = ['ALL', ]
+
+        for license_server in self.license_dic.keys():
+            license_server_list.append(license_server)
+
+        for license_server in license_server_list:
+            self.curve_tab_server_combo.addItem(license_server)
+
+    def curve_tab_server_combo_changed(self):
+        """
+        If self.curve_tab_server_combo is selected, update self.curve_tab_vendor_combo, then filter license feature on CURVE tab.
+        """
+        self.set_curve_tab_vendor_combo()
+
+    def set_curve_tab_vendor_combo(self):
+        """
+        Set (initialize) self.curve_tab_vendor_combo.
+        """
+        self.curve_tab_vendor_combo.clear()
+
+        vendor_daemon_list = ['ALL', ]
+        selected_license_server = self.curve_tab_server_combo.currentText().strip()
+
+        for license_server in self.license_dic.keys():
+            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
+                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
+                    if vendor_daemon not in vendor_daemon_list:
+                        vendor_daemon_list.append(vendor_daemon)
+
+        for vendor_daemon in vendor_daemon_list:
+            self.curve_tab_vendor_combo.addItem(vendor_daemon)
+
+    def filter_curve_tab(self):
+        """
+        Update self.curve_tab_table and self.curve_tab_frame1.
+        """
+        curve_dic = self.get_curve_info()
+
+        self.gen_curve_tab_table(curve_dic)
+        self.update_curve_tab_frame1(curve_dic)
+
+    def get_curve_info(self):
+        """
+        Get curve information from config.db_path/license_server/<license_server>/<vendor_deamon>/utilization.db.
+        """
+        # Print loading curve informaiton message.
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        print('* [' + str(current_time) + '] Loading curve info, please wait a moment ...')
+
+        # Print loading curve informaiton message with GUI.
+        my_show_message = ShowMessage('Info', 'Loading curve info, please wait a moment ...')
+        my_show_message.start()
+
+        curve_dic = {}
+        fuzzy_curve_dic = {}
+
+        key_list = ['sample_time', 'issued', 'in_use']
+        begin_date = self.curve_tab_begin_date_edit.date().toString(Qt.ISODate)
+        begin_time = str(begin_date) + ' 00:00:00'
+        begin_second = time.mktime(time.strptime(begin_time, '%Y-%m-%d %H:%M:%S'))
+        end_date = self.curve_tab_end_date_edit.date().toString(Qt.ISODate)
+        end_time = str(end_date) + ' 23:59:59'
+        end_second = time.mktime(time.strptime(end_time, '%Y-%m-%d %H:%M:%S'))
+        select_condition = 'WHERE sample_second>=' + str(begin_second) + ' AND sample_second<=' + str(end_second)
+
+        selected_license_server = self.curve_tab_server_combo.currentText().strip()
+        selected_vendor_daemon = self.curve_tab_vendor_combo.currentText().strip()
+        specified_license_feature = self.curve_tab_feature_line.text().strip()
+
+        # Filter with license_server/vendor_daemon/feature.
+        for license_server in self.db_dic.keys():
+            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
+                for vendor_daemon in self.db_dic[license_server].keys():
+                    if (selected_vendor_daemon == 'ALL') or (selected_vendor_daemon == vendor_daemon):
+                        if 'curve' in self.db_dic[license_server][vendor_daemon].keys():
+                            curve_db_file = self.db_dic[license_server][vendor_daemon]['curve']
+                            (curve_db_file_connect_result, curve_db_conn) = common_sqlite3.connect_db_file(curve_db_file)
+
+                            if curve_db_file_connect_result == 'failed':
+                                common.print_warning('*Warning*: Failed on connecting curve database file "' + str(curve_db_file) + '".')
+                            else:
+                                curve_db_table_list = common_sqlite3.get_sql_table_list(curve_db_file, curve_db_conn)
+
+                                for feature in curve_db_table_list:
+                                    # Check fuzzy_mode.
+                                    fuzzy_mode = False
+
+                                    if (feature != specified_license_feature) and re.search(re.escape(specified_license_feature.lower()), feature.lower()):
+                                        fuzzy_mode = True
+
+                                    # feature match or fuzzy_mode.
+                                    if (not specified_license_feature) or (feature == specified_license_feature) or fuzzy_mode:
+                                        data_dic = common_sqlite3.get_sql_table_data(curve_db_file, curve_db_conn, feature, key_list, select_condition)
+
+                                        if data_dic:
+                                            if fuzzy_mode:
+                                                fuzzy_curve_dic.setdefault(feature, {})
+                                                fuzzy_curve_dic[feature].setdefault(vendor_daemon, {})
+                                            else:
+                                                curve_dic.setdefault(feature, {})
+                                                curve_dic[feature].setdefault(vendor_daemon, {})
+
+                                            for (i, sample_time) in enumerate(data_dic['sample_time']):
+                                                issued_num = data_dic['issued'][i]
+                                                in_use_num = data_dic['in_use'][i]
+
+                                                if fuzzy_mode:
+                                                    fuzzy_curve_dic[feature][vendor_daemon].setdefault(sample_time, {'issued': 0.0, 'in_use': 0.0})
+                                                else:
+                                                    curve_dic[feature][vendor_daemon].setdefault(sample_time, {'issued': 0.0, 'in_use': 0.0})
+
+                                                if issued_num == 'Uncounted':
+                                                    if fuzzy_mode:
+                                                        fuzzy_curve_dic[feature][vendor_daemon][sample_time]['issued'] = 'Uncounted'
+                                                    else:
+                                                        curve_dic[feature][vendor_daemon][sample_time]['issued'] = 'Uncounted'
+                                                else:
+                                                    if fuzzy_mode:
+                                                        if fuzzy_curve_dic[feature][vendor_daemon][sample_time]['issued'] != 'Uncounted':
+                                                            fuzzy_curve_dic[feature][vendor_daemon][sample_time]['issued'] += float(issued_num)
+                                                    else:
+                                                        if curve_dic[feature][vendor_daemon][sample_time]['issued'] != 'Uncounted':
+                                                            curve_dic[feature][vendor_daemon][sample_time]['issued'] += float(issued_num)
+
+                                                if fuzzy_mode:
+                                                    fuzzy_curve_dic[feature][vendor_daemon][sample_time]['in_use'] += float(in_use_num)
+                                                else:
+                                                    curve_dic[feature][vendor_daemon][sample_time]['in_use'] += float(in_use_num)
+
+                                curve_db_conn.close()
+
+        # Filter with feature on fuzzy mode.
+        if (not curve_dic) and fuzzy_curve_dic:
+            curve_dic = fuzzy_curve_dic
+
+        my_show_message.terminate()
+
+        if not curve_dic:
+            common.print_warning('*Warning*: No curve data is find.')
+
+        return curve_dic
+
+    def gen_curve_tab_table(self, curve_dic={}):
+        """
+        Generate self.curve_tab_table.
+        """
+        self.curve_tab_table.setShowGrid(True)
+        self.curve_tab_table.setSortingEnabled(True)
+        self.curve_tab_table.setColumnCount(0)
+        self.curve_tab_table.setColumnCount(5)
+        self.curve_tab_table_title_list = ['Feature', 'Vendor', 'Total', 'In_Use', 'Peak']
+        self.curve_tab_table.setHorizontalHeaderLabels(self.curve_tab_table_title_list)
+
+        self.curve_tab_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.curve_tab_table.setColumnWidth(1, 80)
+        self.curve_tab_table.setColumnWidth(2, 90)
+        self.curve_tab_table.setColumnWidth(3, 60)
+        self.curve_tab_table.setColumnWidth(4, 60)
+
+        # Set self.curve_tab_table row length.
+        row_length = 0
+
+        for feature in curve_dic.keys():
+            for vendor_daemon in curve_dic[feature].keys():
+                row_length += 1
+
+        self.curve_tab_table.setRowCount(0)
+        self.curve_tab_table.setRowCount(row_length)
+
+        # Fill self.curve_tab_table items.
+        if curve_dic:
+            i = -1
+
+            for feature in curve_dic.keys():
+                for vendor_daemon in curve_dic[feature].keys():
+                    issued_list = []
+                    in_use_list = []
+
+                    for sample_time in curve_dic[feature][vendor_daemon].keys():
+                        issued_num = curve_dic[feature][vendor_daemon][sample_time]['issued']
+                        in_use_num = curve_dic[feature][vendor_daemon][sample_time]['in_use']
+
+                        issued_list.append(issued_num)
+                        in_use_list.append(in_use_num)
+
+                    if 'Uncounted' in issued_list:
+                        avg_issued = 'Uncounted'
+                    else:
+                        avg_issued = round(sum(issued_list)/len(issued_list), 1)
+
+                    avg_in_use = round(sum(in_use_list)/len(in_use_list), 1)
+                    peak_in_use = max(in_use_list)
+
+                    i += 1
+
+                    # Fill "Feature" item.
+                    item = QTableWidgetItem(feature)
+                    self.curve_tab_table.setItem(i, 0, item)
+
+                    # Fill "Vendor" item.
+                    item = QTableWidgetItem(vendor_daemon)
+                    self.curve_tab_table.setItem(i, 1, item)
+
+                    # Fill "Total" item.
+                    item = QTableWidgetItem()
+                    item.setData(Qt.DisplayRole, avg_issued)
+                    self.curve_tab_table.setItem(i, 2, item)
+
+                    # Fill "In_Use" item.
+                    item = QTableWidgetItem()
+                    item.setData(Qt.DisplayRole, avg_in_use)
+                    self.curve_tab_table.setItem(i, 3, item)
+
+                    # Fill "Peak" item.
+                    item = QTableWidgetItem()
+                    item.setData(Qt.DisplayRole, peak_in_use)
+                    self.curve_tab_table.setItem(i, 4, item)
+
+    def curve_tab_table_click(self, item=None):
+        """
+        If click feature name on self.curve_tab_table, jump to FEATURE tab and show feature related information.
+        """
+        if item:
+            if item.column() == 0:
+                current_row = self.curve_tab_table.currentRow()
+                feature = self.curve_tab_table.item(current_row, 0).text().strip()
+
+                self.feature_tab_feature_line.setText(feature)
+                self.filter_feature_tab_license_feature(get_license_info=False)
+                self.main_tab.setCurrentWidget(self.feature_tab)
+
+    def gen_curve_tab_frame1(self):
+        """
+        Generate self.curve_tab_frame1.
+        """
+        # self.curve_tab_frame1
+        self.curve_tab_canvas = common_pyqt5.FigureCanvasQTAgg()
+        self.curve_tab_toolbar = common_pyqt5.NavigationToolbar2QT(self.curve_tab_canvas, self)
+
+        # self.curve_tab_frame1 - Grid
+        curve_tab_frame1_grid = QGridLayout()
+        curve_tab_frame1_grid.addWidget(self.curve_tab_toolbar, 0, 0)
+        curve_tab_frame1_grid.addWidget(self.curve_tab_canvas, 1, 0)
+        self.curve_tab_frame1.setLayout(curve_tab_frame1_grid)
+
+    def update_curve_tab_frame1(self, curve_dic={}):
+        """
+        Generate self.curve_tab_frame1.
+        """
+        # Generate fig.
+        fig = self.curve_tab_canvas.figure
+        fig.clear()
+        self.curve_tab_canvas.draw()
+
+        specified_license_feature = self.curve_tab_feature_line.text().strip()
+
+        if not specified_license_feature:
+            common.print_warning('*Warning*: No feature is specified, will not generate curve.')
+            return
+        elif specified_license_feature not in curve_dic:
+            common.print_warning('*Warning*: No valid feature is specified, will not generate curve.')
+            return
+
+        # Print loading cost informaiton message.
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        print('* [' + str(current_time) + '] Process curve info, please wait a moment ...')
+
+        # Print loading cost informaiton message with GUI.
+        my_show_message = ShowMessage('Info', 'Process curve info, please wait a moment ...')
+        my_show_message.start()
+
+        # Get sample_time_list.
+        sample_time_list = []
+
+        for feature in curve_dic.keys():
+            for vendor_daemon in curve_dic[feature].keys():
+                sample_time_list.extend(list(curve_dic[feature][vendor_daemon].keys()))
+
+        sample_time_list = list(set(sample_time_list))
+        sample_time_list.sort()
+
+        # Get issued/in_use list.
+        issued_list = []
+        in_use_list = []
+
+        for sample_time in sample_time_list:
+            for feature in curve_dic.keys():
+                for vendor_daemon in curve_dic[feature].keys():
+                    if sample_time in curve_dic[feature][vendor_daemon].keys():
+                        issued_num = curve_dic[feature][vendor_daemon][sample_time]['issued']
+                        in_use_num = curve_dic[feature][vendor_daemon][sample_time]['in_use']
+
+                        if issued_num == 'Uncounted':
+                            issued_num = 0
+
+                        issued_list.append(issued_num)
+                        in_use_list.append(in_use_num)
+
+        my_show_message.terminate()
+
+        if sample_time_list and issued_list and in_use_list:
+            # Update sample_time format.
+            for (i, sample_time) in enumerate(sample_time_list):
+                sample_time_list[i] = datetime.datetime.strptime(sample_time, '%Y%m%d_%H%M%S')
+
+            # Draw curve.
+            self.draw_curve_tab_curve(fig, sample_time_list, issued_list, in_use_list)
+
+    def draw_curve_tab_curve(self, fig, sample_time_list, issued_list, in_use_list):
+        """
+        Draw average issued/in_use curve for specified feature(s).
+        """
+        fig.subplots_adjust(bottom=0.25)
+        axes = fig.add_subplot(111)
+        avg_in_use = round((sum(in_use_list)/len(in_use_list)), 1)
+        axes.set_title('Average Used : ' + str(avg_in_use))
+        axes.set_xlabel('Sample Time')
+        axes.set_ylabel('Num')
+        axes.plot(sample_time_list, issued_list, 'bo-', label='TOTAL', linewidth=0.1, markersize=0.1)
+        axes.plot(sample_time_list, in_use_list, 'go-', label='IN_USE', linewidth=0.1, markersize=0.1)
+        axes.fill_between(sample_time_list, 0, in_use_list, color='green', alpha=0.5)
+        axes.legend(loc='upper right')
+        axes.tick_params(axis='x', rotation=15)
+        axes.grid()
+        self.curve_tab_canvas.draw()
+# For CURVE TAB (end) #
+
 # For UTILIZATION TAB (start) #
     def gen_utilization_tab(self):
         """
-        Generate UTILIAZTION tab, show license feature utilization information.
+        Generate UTILIZATION tab, show license feature utilization information.
         """
         self.utilization_tab_frame0 = QFrame(self.utilization_tab)
         self.utilization_tab_frame0.setFrameShadow(QFrame.Raised)
@@ -1585,7 +2110,6 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.utilization_tab_vendor_combo = QComboBox(self.utilization_tab_frame0)
         self.set_utilization_tab_vendor_combo()
-        self.utilization_tab_vendor_combo.activated.connect(self.utilization_tab_vendor_combo_changed)
 
         # License Feature
         utilization_tab_feature_label = QLabel('Feature', self.utilization_tab_frame0)
@@ -1635,7 +2159,7 @@ licenseMonitor is an open source software for EDA software license information d
         # Export button
         utilization_tab_export_button = QPushButton('Export', self.utilization_tab_frame0)
         utilization_tab_export_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
-        utilization_tab_export_button.clicked.connect(self.export_utilization_info)
+        utilization_tab_export_button.clicked.connect(self.export_utilization_table)
 
         # self.utilization_tab_frame0 - Grid
         utilization_tab_frame0_grid = QGridLayout()
@@ -1681,10 +2205,9 @@ licenseMonitor is an open source software for EDA software license information d
 
     def utilization_tab_server_combo_changed(self):
         """
-        If self.utilization_tab_server_combo is selected, update self.utilization_tab_vendor_combo, then filter license feature on utilization_tab.
+        If self.utilization_tab_server_combo is selected, update self.utilization_tab_vendor_combo, then filter license feature on UTILIAZTION tab.
         """
         self.set_utilization_tab_vendor_combo()
-        self.filter_utilization_tab()
 
     def set_utilization_tab_vendor_combo(self):
         """
@@ -1704,13 +2227,6 @@ licenseMonitor is an open source software for EDA software license information d
         for vendor_daemon in vendor_daemon_list:
             self.utilization_tab_vendor_combo.addItem(vendor_daemon)
 
-    def utilization_tab_vendor_combo_changed(self):
-        """
-        If self.utilization_tab_vendor_combo is selected, filter license feature on utilization_tab.
-        """
-        if self.utilization_tab_vendor_combo.count() > 2:
-            self.filter_utilization_tab()
-
     def filter_utilization_tab(self):
         """
         Update self.utilization_tab_table and self.utilization_tab_frame1.
@@ -1725,25 +2241,36 @@ licenseMonitor is an open source software for EDA software license information d
 
     def get_utilization_info(self):
         """
-        Get utilization information from config.db_path/license_server/<license_server>/<vendor_deamon>/utilization_day.db.
+        Get utilization information from config.db_path/license_server/<license_server>/<vendor_deamon>/utilization(_day).db.
         """
         # Print loading utilization informaiton message.
         current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        print('* [' + str(current_time) + '] Loading utilization information, please wait a moment ...')
+        print('* [' + str(current_time) + '] Loading utilization info, please wait a moment ...')
 
         # Print loading utilization informaiton message with GUI.
-        my_show_message = ShowMessage('Info', 'Loading utilization information, please wait a moment ...')
+        my_show_message = ShowMessage('Info', 'Loading utilization info, please wait a moment ...')
         my_show_message.start()
 
         utilization_dic = {}
         fuzzy_utilization_dic = {}
 
-        begin_date = self.utilization_tab_begin_date_edit.date().toString(Qt.ISODate)
-        begin_date = re.sub('-', '', begin_date)
-        end_date = self.utilization_tab_end_date_edit.date().toString(Qt.ISODate)
-        end_date = re.sub('-', '', end_date)
-        select_condition = 'WHERE sample_date>=' + str(begin_date) + ' AND sample_date<=' + str(end_date)
+        if self.enable_utilization_detail:
+            key_list = ['sample_time', 'issued', 'in_use']
+            begin_date = self.utilization_tab_begin_date_edit.date().toString(Qt.ISODate)
+            begin_time = str(begin_date) + ' 00:00:00'
+            begin_second = time.mktime(time.strptime(begin_time, '%Y-%m-%d %H:%M:%S'))
+            end_date = self.utilization_tab_end_date_edit.date().toString(Qt.ISODate)
+            end_time = str(end_date) + ' 23:59:59'
+            end_second = time.mktime(time.strptime(end_time, '%Y-%m-%d %H:%M:%S'))
+            select_condition = 'WHERE sample_second>=' + str(begin_second) + ' AND sample_second<=' + str(end_second)
+        else:
+            key_list = ['sample_date', 'issued', 'in_use']
+            begin_date = self.utilization_tab_begin_date_edit.date().toString(Qt.ISODate)
+            begin_date = re.sub('-', '', begin_date)
+            end_date = self.utilization_tab_end_date_edit.date().toString(Qt.ISODate)
+            end_date = re.sub('-', '', end_date)
+            select_condition = 'WHERE sample_date>=' + str(begin_date) + ' AND sample_date<=' + str(end_date)
 
         selected_license_server = self.utilization_tab_server_combo.currentText().strip()
         selected_vendor_daemon = self.utilization_tab_vendor_combo.currentText().strip()
@@ -1774,7 +2301,7 @@ licenseMonitor is an open source software for EDA software license information d
 
                                     # feature match or fuzzy_mode.
                                     if (not specified_license_feature_list) or (feature in specified_license_feature_list) or fuzzy_mode:
-                                        data_dic = common_sqlite3.get_sql_table_data(utilization_db_file, utilization_db_conn, feature, ['sample_date', 'issued', 'in_use', 'utilization'], select_condition)
+                                        data_dic = common_sqlite3.get_sql_table_data(utilization_db_file, utilization_db_conn, feature, key_list, select_condition)
 
                                         if data_dic:
                                             if fuzzy_mode:
@@ -1784,17 +2311,21 @@ licenseMonitor is an open source software for EDA software license information d
                                                 utilization_dic.setdefault(feature, {})
                                                 utilization_dic[feature].setdefault(vendor_daemon, {})
 
-                                            for (i, sample_date) in enumerate(data_dic['sample_date']):
-                                                issued = data_dic['issued'][i]
-                                                in_use = data_dic['in_use'][i]
-                                                utilization = data_dic['utilization'][i]
+                                            if self.enable_utilization_detail:
+                                                key = 'sample_time'
+                                            else:
+                                                key = 'sample_date'
+
+                                            for (i, sample_date) in enumerate(data_dic[key]):
+                                                issued_num = data_dic['issued'][i]
+                                                in_use_num = data_dic['in_use'][i]
 
                                                 if fuzzy_mode:
-                                                    fuzzy_utilization_dic[feature][vendor_daemon].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0, 'utilization': []})
+                                                    fuzzy_utilization_dic[feature][vendor_daemon].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0})
                                                 else:
-                                                    utilization_dic[feature][vendor_daemon].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0, 'utilization': []})
+                                                    utilization_dic[feature][vendor_daemon].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0})
 
-                                                if issued == 'Uncounted':
+                                                if issued_num == 'Uncounted':
                                                     if fuzzy_mode:
                                                         fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] = 'Uncounted'
                                                     else:
@@ -1802,17 +2333,15 @@ licenseMonitor is an open source software for EDA software license information d
                                                 else:
                                                     if fuzzy_mode:
                                                         if fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] != 'Uncounted':
-                                                            fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] = float(issued)
+                                                            fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] += float(issued_num)
                                                     else:
                                                         if utilization_dic[feature][vendor_daemon][sample_date]['issued'] != 'Uncounted':
-                                                            utilization_dic[feature][vendor_daemon][sample_date]['issued'] = float(issued)
+                                                            utilization_dic[feature][vendor_daemon][sample_date]['issued'] += float(issued_num)
 
                                                 if fuzzy_mode:
-                                                    fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['in_use'] = float(in_use)
-                                                    fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['utilization'].append(float(utilization))
+                                                    fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['in_use'] += float(in_use_num)
                                                 else:
-                                                    utilization_dic[feature][vendor_daemon][sample_date]['in_use'] = float(in_use)
-                                                    utilization_dic[feature][vendor_daemon][sample_date]['utilization'].append(float(utilization))
+                                                    utilization_dic[feature][vendor_daemon][sample_date]['in_use'] += float(in_use_num)
 
                                 utilization_db_conn.close()
 
@@ -1836,37 +2365,30 @@ licenseMonitor is an open source software for EDA software license information d
                     if re.match(black_feature, feature):
                         del filtered_utilization_dic[feature]
 
+        # Count utilizaton information.
+        for feature in filtered_utilization_dic.keys():
+            for vendor_daemon in filtered_utilization_dic[feature].keys():
+                for sample_date in filtered_utilization_dic[feature][vendor_daemon].keys():
+                    issued_num = filtered_utilization_dic[feature][vendor_daemon][sample_date]['issued']
+                    in_use_num = filtered_utilization_dic[feature][vendor_daemon][sample_date]['in_use']
+                    utilization = 0.0
+
+                    if issued_num == 'Uncounted':
+                        if in_use_num > 0:
+                            utilization = 100.0
+                        else:
+                            utilization = 0.0
+                    else:
+                        utilization = round(100 * in_use_num / issued_num, 1)
+
+                    filtered_utilization_dic[feature][vendor_daemon][sample_date]['utilization'] = utilization
+
         my_show_message.terminate()
 
         if not filtered_utilization_dic:
             common.print_warning('*Warning*: No utilization data is find.')
 
         return filtered_utilization_dic
-
-    def export_utilization_info(self):
-        """
-        Export self.utilization_tab_table into an Excel.
-        """
-        (utilization_info_file, file_type) = QFileDialog.getSaveFileName(self, 'Export utilization info', './lm_utilization.xlsx', 'Excel (*.xlsx)')
-
-        if utilization_info_file:
-            # Get self.utilization_tab_label content.
-            utilization_tab_table_list = []
-            utilization_tab_table_list.append(self.utilization_tab_table_title_list)
-
-            for row in range(self.utilization_tab_table.rowCount()):
-                row_list = []
-                for column in range(self.utilization_tab_table.columnCount()):
-                    row_list.append(self.utilization_tab_table.item(row, column).text())
-
-                utilization_tab_table_list.append(row_list)
-
-            # Write excel
-            current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-            print('* [' + str(current_time) + '] Writing utilization info file "' + str(utilization_info_file) + '" ...')
-
-            common.write_excel(excel_file=utilization_info_file, contents_list=utilization_tab_table_list, specified_sheet_name='utilization_info')
 
     def gen_utilization_tab_table(self, utilization_dic={}):
         """
@@ -1903,12 +2425,28 @@ licenseMonitor is an open source software for EDA software license information d
 
             for feature in utilization_dic.keys():
                 for vendor_daemon in utilization_dic[feature].keys():
-                    utilization_list = []
+                    if self.enable_utilization_product:
+                        utilization_list = []
 
-                    for sample_date in utilization_dic[feature][vendor_daemon].keys():
-                        utilization_list.extend(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
+                        for sample_date in utilization_dic[feature][vendor_daemon].keys():
+                            utilization_list.append(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
 
-                    avg_utilization = round(sum(utilization_list)/len(utilization_list), 1)
+                        avg_utilization = round(sum(utilization_list) / len(utilization_list), 1)
+                    else:
+                        issued_list = []
+                        in_use_list = []
+
+                        for sample_date in utilization_dic[feature][vendor_daemon].keys():
+                            issued_list.append(utilization_dic[feature][vendor_daemon][sample_date]['issued'])
+                            in_use_list.append(utilization_dic[feature][vendor_daemon][sample_date]['in_use'])
+
+                        if 'Uncounted' in issued_list:
+                            if sum(in_use_list) > 0:
+                                avg_utilization = 100.0
+                            else:
+                                avg_utilization = 0.0
+                        else:
+                            avg_utilization = round(100 * sum(in_use_list) / sum(issued_list), 1)
 
                     i += 1
 
@@ -1949,13 +2487,13 @@ licenseMonitor is an open source software for EDA software license information d
         Generate self.utilization_tab_frame1.
         """
         # self.utilization_tab_frame1
-        self.utilization_tab_canvas = FigureCanvas()
-        self.utilization_tab_toolbar = NavigationToolbar2QT(self.utilization_tab_canvas, self)
+        self.utilization_tab_canvas = common_pyqt5.FigureCanvasQTAgg()
+        self.utilization_tab_toolbar = common_pyqt5.NavigationToolbar2QT(self.utilization_tab_canvas, self)
 
         # self.utilization_tab_frame1 - Grid
         utilization_tab_frame1_grid = QGridLayout()
         utilization_tab_frame1_grid.addWidget(self.utilization_tab_toolbar, 0, 0)
-        utilization_tab_frame1_grid.addWidget(self.utilization_tab_canvas, 0, 0)
+        utilization_tab_frame1_grid.addWidget(self.utilization_tab_canvas, 1, 0)
         self.utilization_tab_frame1.setLayout(utilization_tab_frame1_grid)
 
     def update_utilization_tab_frame1(self, utilization_dic={}):
@@ -1967,58 +2505,72 @@ licenseMonitor is an open source software for EDA software license information d
         fig.clear()
         self.utilization_tab_canvas.draw()
 
-        # Get date_list.
-        date_list = []
+        # Print loading cost informaiton message.
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        print('* [' + str(current_time) + '] Process utilization info, please wait a moment ...')
+
+        # Print loading cost informaiton message with GUI.
+        my_show_message = ShowMessage('Info', 'Process utilization info, please wait a moment ...')
+        my_show_message.start()
+
+        # Get sample_date_list.
+        sample_date_list = []
 
         for feature in utilization_dic.keys():
             for vendor_daemon in utilization_dic[feature].keys():
-                for sample_date in utilization_dic[feature][vendor_daemon].keys():
-                    if sample_date not in date_list:
-                        date_list.append(sample_date)
+                sample_date_list.extend(list(utilization_dic[feature][vendor_daemon].keys()))
 
-        date_list.sort()
+        sample_date_list = list(set(sample_date_list))
+        sample_date_list.sort()
 
         # Get utilization_list.
         utilization_list = []
-        full_utilization_list = []
 
-        for date in date_list:
-            tmp_utilization_list = []
+        for sample_date in sample_date_list:
+            sample_date_utilization_list = []
 
             for feature in utilization_dic.keys():
                 for vendor_daemon in utilization_dic[feature].keys():
-                    for sample_date in utilization_dic[feature][vendor_daemon].keys():
-                        if sample_date == date:
-                            tmp_utilization_list.extend(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
-                            full_utilization_list.extend(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
+                    if sample_date in utilization_dic[feature][vendor_daemon].keys():
+                        sample_date_utilization_list.append(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
 
-            date_avg_utilization = round(sum(tmp_utilization_list)/len(tmp_utilization_list), 1)
-            utilization_list.append(date_avg_utilization)
+            avg_sample_date_utilzation = round(sum(sample_date_utilization_list) / len(sample_date_utilization_list), 1)
+            utilization_list.append(avg_sample_date_utilzation)
 
-        # Update sample_date format.
-        for (i, sample_date) in enumerate(date_list):
-            sample_date = datetime.datetime.strptime(sample_date, '%Y%m%d')
-            date_list[i] = sample_date
+        my_show_message.terminate()
 
-        # Get avg_utilization.
-        avg_utilization = 0
+        if sample_date_list and utilization_list:
+            # Update sample_date format.
+            for (i, sample_date) in enumerate(sample_date_list):
+                if self.enable_utilization_detail:
+                    sample_date_list[i] = datetime.datetime.strptime(sample_date, '%Y%m%d_%H%M%S')
+                else:
+                    sample_date_list[i] = datetime.datetime.strptime(sample_date, '%Y%m%d')
 
-        if full_utilization_list:
-            avg_utilization = round(sum(full_utilization_list)/len(full_utilization_list), 1)
+            # Get avg_utilization.
+            avg_utilization = round(sum(utilization_list) / len(utilization_list), 1)
 
-        # Draw utilization curve.
-        self.draw_utilization_tab_curve(fig, avg_utilization, date_list, utilization_list)
+            # Draw utilization curve.
+            self.draw_utilization_tab_curve(fig, avg_utilization, sample_date_list, utilization_list)
 
-    def draw_utilization_tab_curve(self, fig, avg_utilization, date_list, utilization_list):
+    def draw_utilization_tab_curve(self, fig, avg_utilization, sample_date_list, utilization_list):
         """
         Draw average utilization curve for specified feature(s).
         """
         fig.subplots_adjust(bottom=0.25)
         axes = fig.add_subplot(111)
         axes.set_title('Average Utilization : ' + str(avg_utilization) + '%')
-        axes.set_xlabel('Date')
-        axes.set_ylabel('Utilization')
-        axes.plot(date_list, utilization_list, 'ro-')
+
+        if self.enable_utilization_detail:
+            axes.set_xlabel('Sample Time')
+        else:
+            axes.set_xlabel('Sample Date')
+
+        axes.set_ylabel('Utilization (%)')
+        axes.plot(sample_date_list, utilization_list, 'ro-', label='UT', linewidth=0.1, markersize=0.1)
+        axes.fill_between(sample_date_list, 0, utilization_list, color='red', alpha=0.5)
+        axes.legend(loc='upper right')
         axes.tick_params(axis='x', rotation=15)
         axes.grid()
         self.utilization_tab_canvas.draw()
@@ -2118,7 +2670,7 @@ licenseMonitor is an open source software for EDA software license information d
         # Export button
         cost_tab_export_button = QPushButton('Export', self.cost_tab_frame0)
         cost_tab_export_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
-        cost_tab_export_button.clicked.connect(self.export_cost_info)
+        cost_tab_export_button.clicked.connect(self.export_cost_table)
 
         # self.cost_tab_frame0 - Grid
         cost_tab_frame0_grid = QGridLayout()
@@ -2209,10 +2761,10 @@ licenseMonitor is an open source software for EDA software license information d
         # Print loading cost informaiton message.
         current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        print('* [' + str(current_time) + '] Loading cost information, please wait a moment ...')
+        print('* [' + str(current_time) + '] Loading cost info, please wait a moment ...')
 
         # Print loading cost informaiton message with GUI.
-        my_show_message = ShowMessage('Info', 'Loading cost information, please wait a moment ...')
+        my_show_message = ShowMessage('Info', 'Loading cost info, please wait a moment ...')
         my_show_message.start()
 
         cost_dic = {}
@@ -2409,32 +2961,6 @@ licenseMonitor is an open source software for EDA software license information d
 
         return project_dic
 
-    def export_cost_info(self):
-        """
-        Export self.cost_tab_table into an Excel.
-        """
-        (cost_info_file, file_type) = QFileDialog.getSaveFileName(self, 'Export cost info', './lm_cost.xlsx', 'Excel (*.xlsx)')
-
-        if cost_info_file:
-            # Get self.cost_tab_label content.
-            cost_tab_table_list = []
-            cost_tab_table_list.append(self.cost_tab_table_title_list)
-
-            for row in range(self.cost_tab_table.rowCount()):
-                row_list = []
-
-                for column in range(self.cost_tab_table.columnCount()):
-                    row_list.append(self.cost_tab_table.item(row, column).text())
-
-                cost_tab_table_list.append(row_list)
-
-            # Write excel
-            current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-            print('* [' + str(current_time) + '] Writing cost info file "' + str(cost_info_file) + '" ...')
-
-            common.write_excel(excel_file=cost_info_file, contents_list=cost_tab_table_list, specified_sheet_name='cost_info')
-
     def gen_cost_tab_table(self, cost_dic={}):
         """
         Generate self.cost_tab_table.
@@ -2543,6 +3069,61 @@ licenseMonitor is an open source software for EDA software license information d
                 self.main_tab.setCurrentWidget(self.feature_tab)
 # For COST TAB (end) #
 
+# Export table (start) #
+    def export_server_table(self):
+        self.export_table('server', self.server_tab_table, self.server_tab_table_title_list)
+
+    def export_feature_table(self):
+        self.export_table('feature', self.feature_tab_table, self.feature_tab_table_title_list)
+
+    def export_expires_table(self):
+        self.export_table('expires', self.expires_tab_table, self.expires_tab_table_title_list)
+
+    def export_usage_table(self):
+        self.export_table('usage', self.usage_tab_table, self.usage_tab_table_title_list)
+
+    def export_curve_table(self):
+        self.export_table('curve', self.curve_tab_table, self.curve_tab_table_title_list)
+
+    def export_utilization_table(self):
+        self.export_table('utilization', self.utilization_tab_table, self.utilization_tab_table_title_list)
+
+    def export_cost_table(self):
+        self.export_table('cost', self.cost_tab_table, self.cost_tab_table_title_list)
+
+    def export_table(self, table_type, table_item, title_list):
+        """
+        Export specified table info into an Excel.
+        """
+        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_time_string = re.sub('-', '', current_time)
+        current_time_string = re.sub(':', '', current_time_string)
+        current_time_string = re.sub(' ', '_', current_time_string)
+        default_output_file = './licenseMonitor_' + str(table_type) + '_' + str(current_time_string) + '.xlsx'
+        (output_file, output_file_type) = QFileDialog.getSaveFileName(self, 'Export ' + str(table_type) + ' table', default_output_file, 'Excel (*.xlsx)')
+
+        if output_file:
+            # Get table content.
+            table_info_list = []
+            table_info_list.append(title_list)
+
+            for row in range(table_item.rowCount()):
+                row_list = []
+
+                for column in range(table_item.columnCount()):
+                    if table_item.item(row, column):
+                        row_list.append(table_item.item(row, column).text())
+                    else:
+                        row_list.append('')
+
+                table_info_list.append(row_list)
+
+            # Write excel
+            print('* [' + str(current_time) + '] Writing ' + str(table_type) + ' table into "' + str(output_file) + '" ...')
+
+            common.write_excel(excel_file=output_file, contents_list=table_info_list, specified_sheet_name=table_type)
+# Export table (end) #
+
     def close_event(self, QCloseEvent):
         """
         When window close, post-process.
@@ -2570,7 +3151,8 @@ class LicenseLogWindow(QMainWindow):
         # Set size & position
         self.license_log_widget = QWidget()
         self.setCentralWidget(self.license_log_widget)
-        self.resize(800, 590)
+        self.resize(800, 525)
+        common_pyqt5.center_window(self)
 
         self.license_log_frame = QFrame(self.license_log_widget)
         self.license_log_frame.setFrameShadow(QFrame.Raised)
@@ -2674,7 +3256,7 @@ class LicenseLogWindow(QMainWindow):
         else:
             max_record_num = 1000
 
-        license_log_class = common_license.LicenseLog(server=self.server, vendor=self.vendor, feature=feature, user=user, status=status, lic_files=self.lic_files, max_record_num=max_record_num)
+        license_log_class = LicenseLog(server=self.server, vendor=self.vendor, feature=feature, user=user, status=status, lic_files=self.lic_files, max_record_num=max_record_num)
         license_log_info_list = license_log_class.license_log_info_list
 
         my_show_message.terminate()
@@ -2747,6 +3329,107 @@ class LicenseLogWindow(QMainWindow):
 
         for status in ['ALL', 'OUT', 'IN', 'DENIED', 'QUEUED', 'UNSUPPORTED']:
             self.status_combo.addItem(status)
+
+
+class LicenseRecord:
+    def __init__(self, log_time, status, feature, user, exec_host, info):
+        self.log_time = log_time
+        self.status = status
+        self.feature = feature
+        self.user = user
+        self.exec_host = exec_host
+        self.info = info
+
+
+class LicenseLog:
+    """
+    Get feature/user information from license log file.
+    """
+    def __init__(self, server='', vendor='', feature='', user='', status='', lic_files='', max_record_num=1000):
+        self.server = server
+        self.vendor = vendor
+        self.feature = feature
+        self.user = user
+        self.status = status
+        self.lic_files = lic_files
+        self.max_record_num = max_record_num
+
+        # Main data structrue for LicenseLog, save all license log information.
+        self.license_log_info_list = []
+
+        # Get self.license_log_info_list.
+        if self.feature:
+            self.get_license_log_info()
+
+    def get_license_log_info(self):
+        """
+        Get self.license_log_info_list.
+        """
+        # Get real license log path.
+        license_log = ''
+        license_server_host = self.server.split('@')[1]
+
+        if (not license_log) and self.lic_files:
+            lic_log_rec = re.compile(r'^.*lmgrd.*\s+-c\s+(.*)\s+-l\s+(\S+)\s*.*$')
+            command = 'ps -aux | grep lmgrd '
+
+            stdout_list = common.ssh_client(host_name=license_server_host, user_name=str(getpass.getuser()), command=command, timeout=1)
+
+            for line in stdout_list:
+                if my_match := lic_log_rec.match(line):
+                    license_file_info = my_match.group(1)
+
+                    if self.lic_files.find(license_file_info) != -1:
+                        license_log = my_match.group(2)
+
+        # Get expected information from license log.
+        if not license_log:
+            common.print_warning('*Warning*: Could not find ' + str(self.vendor) + ' license log file in ' + str(self.server) + ' ...')
+        else:
+            if os.path.exists(license_log):
+                grep_cmd = 'grep \'"%s"\' %s ' % (self.feature, license_log)
+                (return_code, stdout, stderr) = common.run_command(grep_cmd)
+                stdout_list = str(stdout, 'unicode_escape').split('\n')
+            else:
+                grep_cmd = 'grep \'"%s"\' %s | tail -n %s' % (self.feature, license_log, str(self.max_record_num))
+                stdout_list = common.ssh_client(host_name=license_server_host, user_name=str(getpass.getuser()), command=grep_cmd, timeout=20)
+
+            self.parse_license_log_info(license_log, stdout_list)
+
+    def parse_license_log_info(self, license_log, stdout_list):
+        """
+        Parse license log, get expected info, save into self.license_log_info_list.
+        """
+        if not stdout_list:
+            common.print_warning('*Warning*: Could not find any infomation when reading license log file ' + str(license_log) + '...')
+            return
+
+        if self.status == 'ALL':
+            log_rec = re.compile(r'^\s*([0-9:]+)\s*\(\S+\)\s+\b(DENIED|IN|OUT|UNSUPPORTED|QUEUED)+\b:\s+\"(.*%s.*)\".*\s+(.*%s.*)(?=@)@(\S+).\s*(.*)\s*$' % (self.feature, self.user))
+        else:
+            log_rec = re.compile(r'^\s*([0-9:]+)\s*\(\S+\)\s+\b(%s)+\b:\s+\"(.*%s.*)\".*\s+(.*%s.*)(?=@)@(\S+).\s*(.*)\s*$' % (self.status, self.feature, self.user))
+
+        info_num = len(stdout_list)
+
+        for i in range(info_num):
+            if i >= self.max_record_num:
+                break
+
+            line = stdout_list[info_num - 1 - i]
+
+            if my_match := log_rec.match(line):
+                log_time = my_match.group(1)
+                status = my_match.group(2)
+                feature = my_match.group(3)
+                user = my_match.group(4)
+                exec_host = my_match.group(5)
+                info = my_match.group(6).strip()
+
+                if info.find(']') != -1:
+                    info = info.split(']')[1]
+
+                license_record = LicenseRecord(log_time, status, feature, user, exec_host, info)
+                self.license_log_info_list.append(license_record)
 
 
 class ShowMessage(QThread):

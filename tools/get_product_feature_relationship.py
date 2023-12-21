@@ -10,6 +10,8 @@ import re
 import sys
 import argparse
 import yaml
+import stat
+import copy
 
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
@@ -24,21 +26,33 @@ def read_args():
     Read in arguments.
     """
     parser = argparse.ArgumentParser()
+    valid_vendor_daemon_list = ['cdslmd', 'snpslmd', 'mgcld']
 
     parser.add_argument('-v', '--vendors',
+                        required=True,
                         nargs='+',
                         default=[],
-                        help='Required argument, specify vendor list, must be the same order of license_files.')
+                        choices=valid_vendor_daemon_list,
+                        help='Required argument, specify vendor daemon list, must be the same order of license_files.')
     parser.add_argument('-l', '--license_files',
                         required=True,
                         nargs='+',
                         default=[],
-                        help='Required argument, specify license files.')
+                        help='Required argument, specify license files, must be the same order of vendors.')
+    parser.add_argument('-f', '--product_format',
+                        default='<product_name>',
+                        help='Specify product format, default is "<product_name>", only support "<product_id>" and "<product_name>" two variables.')
     parser.add_argument('-o', '--output_file',
-                        default='',
-                        help='Output file, yaml format.')
+                        default='./product_feature.yaml',
+                        help='Output file, default is "./product_feature.yaml".')
 
     args = parser.parse_args()
+
+    # Check vendor daemon valid or not.
+    for vendor_daemon in args.vendors:
+        if vendor_daemon not in valid_vendor_daemon_list:
+            common.print_error('*Error*: "' + str(vendor_daemon) + '": unsupported vendor daemon.')
+            sys.exit(1)
 
     # Check license file exists or not.
     for license_file in args.license_files:
@@ -46,29 +60,13 @@ def read_args():
             common.print_error('*Error*: "' + str(license_file) + '": No such license file.')
             sys.exit(1)
 
-    # Set default venodr setting.
-    if not args.vendors:
-        for license_file in args.license_files:
-            args.vendors.append(os.path.basename(license_file))
-
-    # Check vendor valid or not.
-    valid_vendor_list = ['cdslmd', 'snpslmd', 'mgcld']
-
-    for vendor in args.vendors:
-        if vendor not in valid_vendor_list:
-            common.print_error('*Error*: "' + str(vendor) + '": invalid vendor.')
-            sys.exit(1)
-
-    # Set default output file setting.
-    if not args.output_file:
-        if len(args.license_files) == 1:
-            args.output_file = str(CWD) + '/' + str(os.path.basename(args.license_files[0])) + '.yaml'
-        else:
-            common.print_error('*Error*: No output file is specified.')
-            sys.exit(1)
+    # Make sure the number of vendors and license_files are the same.
+    if len(args.vendors) != len(args.license_files):
+        common.print_error('*Error*: The number of vendors and license_files are inconsistent.')
+        sys.exit(1)
 
     # Check output directory exists or not.
-    args.output_file = os.path.abspath(args.output_file)
+    args.output_file = os.path.realpath(args.output_file)
     output_file_dir = os.path.dirname(args.output_file)
 
     if not os.path.exists(output_file_dir):
@@ -80,17 +78,27 @@ def read_args():
         common.print_error('*Error*: "' + str(args.output_file) + '": output file exists, please remove it first.')
         sys.exit(1)
 
-    return (args.license_files, args.vendors, args.output_file)
+    return args.vendors, args.license_files, args.product_format, args.output_file
 
 
 class GetProductFeatureRelationship():
-    def __init__(self):
-        self.license_dic = {}
+    """
+    Get product-feature relationship for specified vendors with spcified license files.
+    """
+    def __init__(self, vendor_daemon_list, license_file_list, product_format, output_file):
+        self.vendor_daemon_list = vendor_daemon_list
+        self.license_file_list = license_file_list
+        self.product_format = product_format
+        self.output_file = output_file
+
+        self.product_feature_relationship_dic = {}
 
     def parse_cdslmd_license_file(self, license_file):
         """
         Parse cdslmd license file, get product_id/product_name/feature information.
         """
+        print('>>> Parse cdslmd license file "' + str(license_file) + '"')
+
         product_id_compile = re.compile(r'^\s*#\s*Product\s+Id\s*:\s*(\S+?),.*$')
         product_name_compile = re.compile(r'^\s*#\s*Product\s+Name\s*:\s*(.+?)\s*$')
         feature_compile = re.compile(r'^\s*#\s*Feature\s*:\s*(.+?)\s+.*$')
@@ -120,12 +128,14 @@ class GetProductFeatureRelationship():
         if product_dic:
             product_dic_list.append(product_dic)
 
-        return (product_dic_list)
+        return product_dic_list
 
     def parse_snpslmd_license_file(self, license_file):
         """
         Parse snpslmd license file, get product_id/product_name/feature information.
         """
+        print('>>> Parse snpslmd license file "' + str(license_file) + '"')
+
         product_compile = re.compile(r'^\s*#\S*\s*Product\s*:.*$')
         separate_compile = re.compile(r'^\s*#\S*\s*----.*$')
         product_id_name_compile = re.compile(r'^\s*#\S*\s*(\S+?):\S+\s+(.+?)\s+0000.*$')
@@ -168,12 +178,14 @@ class GetProductFeatureRelationship():
                     if not find_mark:
                         common.print_warning('*Warning*: Not find product_id "' + str(current_product_id) + '" for feature "' + str(feature) + '".')
 
-        return (product_dic_list)
+        return product_dic_list
 
     def parse_mgcld_license_file(self, license_file):
         """
         Parse mgcld license file, get product_id/product_name/feature information.
         """
+        print('>>> Parse mgcld license file "' + str(license_file) + '"')
+
         product_id_name_compile = re.compile(r'^\s*#\s*(\d+)\s+(.+?)\s+(\d+)\s*$')
         feature_compile1 = re.compile(r'^\s*#\s*(\S+)\s+(20\S+)\s+(\d+/\d+\d+)\s+(\d+/\d+/\d+)\s+(\d+)\s*$')
         feature_compile2 = re.compile(r'^\s*#\s*(\S+)\s+(20\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s*$')
@@ -201,7 +213,7 @@ class GetProductFeatureRelationship():
                     product_dic.setdefault('feature', [])
                     product_dic['feature'].append(feature)
 
-        return (product_dic_list)
+        return product_dic_list
 
     def switch_product_dic_list(self, product_dic_list):
         """
@@ -210,44 +222,58 @@ class GetProductFeatureRelationship():
         feature_dic = {}
 
         for product_dic in product_dic_list:
+            product_id = product_dic['product_id']
             product_name = product_dic['product_name']
+            product_string = copy.deepcopy(self.product_format)
+            product_string = re.sub(r'<product_id>', product_id, product_string)
+            product_string = re.sub(r'<product_name>', product_name, product_string)
             feature_list = product_dic['feature']
 
             for feature in feature_list:
                 feature_dic.setdefault(feature, [])
 
-                if product_name not in feature_dic[feature]:
-                    feature_dic[feature].append(product_name)
+                if product_string not in feature_dic[feature]:
+                    feature_dic[feature].append(product_string)
 
-        return (feature_dic)
+        return feature_dic
 
-    def parse_license_file(self, vendor, license_file):
+    def parse_license_file(self, vendor_daemon, license_file):
         """
         Parse license file to get product-feature relationship.
         """
         # Parse license file.
-        print('>>> Parse ' + str(vendor) + ' license file "' + str(license_file) + '".')
-
         feature_dic = {}
 
-        if vendor == 'cdslmd':
+        if vendor_daemon == 'cdslmd':
             product_dic_list = self.parse_cdslmd_license_file(license_file)
             feature_dic = self.switch_product_dic_list(product_dic_list)
-            self.license_dic.setdefault('cdslmd', feature_dic)
-        elif vendor == 'snpslmd':
+        elif vendor_daemon == 'snpslmd':
             product_dic_list = self.parse_snpslmd_license_file(license_file)
             feature_dic = self.switch_product_dic_list(product_dic_list)
-            self.license_dic.setdefault('snpslmd', feature_dic)
-        elif vendor == 'mgcld':
+        elif vendor_daemon == 'mgcld':
             product_dic_list = self.parse_mgcld_license_file(license_file)
             feature_dic = self.switch_product_dic_list(product_dic_list)
-            self.license_dic.setdefault('mgcld', feature_dic)
 
-        # Verify self.license_dic feature completeness.
+        if feature_dic:
+            self.product_feature_relationship_dic.setdefault(vendor_daemon, {})
+
+            for feature in feature_dic.keys():
+                self.product_feature_relationship_dic[vendor_daemon].setdefault(feature, [])
+
+                for product in feature_dic[feature]:
+                    if product not in self.product_feature_relationship_dic[vendor_daemon][feature]:
+                        self.product_feature_relationship_dic[vendor_daemon][feature].append(product)
+
+        # Verify self.product_feature_relationship_dic feature completeness.
         license_file_dic = common_license.parse_license_file(license_file)
         self.verify_product_dic(feature_dic, license_file_dic)
 
     def verify_product_dic(self, feature_dic, license_file_dic):
+        """
+        Find feature(s) which have no product_id/product_name information.
+        """
+        print('>>> Verify feature product_id/product_name ...')
+
         # Get feature list from license_file_dic.
         license_file_feature_list = []
 
@@ -257,37 +283,53 @@ class GetProductFeatureRelationship():
 
         # Verify product_feature_list and liense_file_feature_list.
         for feature in license_file_feature_list:
-            if feature not in feature_dic.keys():
+            if feature not in feature_dic:
                 common.print_warning('*Warning*: No product_id/product_name information for feature "' + str(feature) + '".')
 
-    def write_output_file(self, output_file, license_dic={}):
+    def write_output_file(self, relationship_dic={}, output_file=''):
         """
-        Write license_dic into output_file with yaml format.
+        Write self.product_feature_relationship_dic into self.output_file with yaml format.
         """
-        # Set default license_dic.
-        if not license_dic:
-            license_dic = self.license_dic
+        # Set default relationship_dic.
+        if not relationship_dic:
+            relationship_dic = self.product_feature_relationship_dic
 
-        # Write output_file.
-        print('')
-        print('>>> Write output file "' + str(output_file) + '".')
+        # Set default output_file.
+        if not output_file:
+            output_file = self.output_file
 
-        with open(output_file, 'w', encoding='utf-8') as OF:
-            yaml.dump(license_dic, OF)
+        # Write output_file with relationship_dic.
+        if relationship_dic:
+            print('')
+            print('>>> Write output file "' + str(output_file) + '".')
+
+            with open(output_file, 'w', encoding='utf-8') as OF:
+                yaml.dump(relationship_dic, OF)
+
+            os.chmod(output_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+
+    def run(self):
+        """
+        Main function for class GetProductFeatureRelationship.
+        """
+        for (i, license_file) in enumerate(self.license_file_list):
+            vendor_daemon = self.vendor_daemon_list[i]
+            self.parse_license_file(vendor_daemon, license_file)
+
+        # Sort product list.
+        for vendor_daemon in self.product_feature_relationship_dic.keys():
+            for feature in self.product_feature_relationship_dic[vendor_daemon].keys():
+                self.product_feature_relationship_dic[vendor_daemon][feature].sort()
 
 
 ################
 # Main Process #
 ################
 def main():
-    (license_file_list, vendor_list, output_file) = read_args()
-    my_get_product_feature_relationship = GetProductFeatureRelationship()
-
-    for (i, license_file) in enumerate(license_file_list):
-        vendor = vendor_list[i]
-        my_get_product_feature_relationship.parse_license_file(vendor, license_file)
-
-    my_get_product_feature_relationship.write_output_file(output_file)
+    (vendor_daemon_list, license_file_list, product_format, output_file) = read_args()
+    my_get_product_feature_relationship = GetProductFeatureRelationship(vendor_daemon_list, license_file_list, product_format, output_file)
+    my_get_product_feature_relationship.run()
+    my_get_product_feature_relationship.write_output_file()
 
 
 if __name__ == '__main__':

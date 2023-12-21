@@ -37,11 +37,13 @@ def read_args():
     """
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-u", "--usage",
-                        action="store_true", default=False,
+    parser.add_argument('-u', '--usage',
+                        action='store_true',
+                        default=False,
                         help='Sample license feature usage info.')
-    parser.add_argument("-U", "--utilization",
-                        action="store_true", default=False,
+    parser.add_argument('-U', '--utilization',
+                        action='store_true',
+                        default=False,
                         help='Sample license feature utilization info.')
 
     args = parser.parse_args()
@@ -125,10 +127,10 @@ class Sampling:
         """
         print('>>> Detect project setting ...')
 
-        project_list_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list'
-        project_submit_host_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_submit_host'
-        project_execute_host_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_execute_host'
-        project_user_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_user'
+        project_list_file = os.path.realpath(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list')
+        project_submit_host_file = os.path.realpath(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_submit_host')
+        project_execute_host_file = os.path.realpath(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_execute_host')
+        project_user_file = os.path.realpath(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_user')
 
         # Get project_setting_dic.
         copy_mark = False

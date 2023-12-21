@@ -3,9 +3,6 @@ import re
 import sys
 import time
 import datetime
-import paramiko
-import getpass
-import socket
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
@@ -423,7 +420,7 @@ class FilterLicenseDic():
 
     def filter_show_mode_feature(self, license_dic, show_mode):
         """
-        Filter license_dic with show_mode (IN_USE/ALL).
+        Filter license_dic with show_mode (IN_USE/NOT_USED/ALL).
         """
         new_license_dic = {}
 
@@ -432,13 +429,15 @@ class FilterLicenseDic():
                 for feature in license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'].keys():
                     expire_dic_list = []
 
-                    if show_mode == 'IN_USE':
-                        if license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][feature]['in_use'] == '0':
+                    if show_mode in ['IN_USE', 'NOT_USED']:
+                        if (show_mode == 'IN_USE') and (license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][feature]['in_use'] == '0'):
                             continue
-                        else:
-                            if feature in license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires']:
-                                for expire_dic in license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires'][feature]:
-                                    expire_dic_list.append(expire_dic)
+                        elif (show_mode == 'NOT_USED') and (license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][feature]['in_use'] != '0'):
+                            continue
+
+                        if feature in license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires']:
+                            for expire_dic in license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires'][feature]:
+                                expire_dic_list.append(expire_dic)
                     elif show_mode in ['Expired', 'Nearly_Expired', 'Unexpired']:
                         if feature in license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires']:
                             for expire_dic in license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires'][feature]:
@@ -497,107 +496,6 @@ class FilterLicenseDic():
         return filtered_license_dic
 
 
-class LicenseRecord:
-    def __init__(self, log_time, status, feature, user, exec_host, info):
-        self.log_time = log_time
-        self.status = status
-        self.feature = feature
-        self.user = user
-        self.exec_host = exec_host
-        self.info = info
-
-
-class LicenseLog:
-    """
-    Get feature/user information from license log file.
-    """
-    def __init__(self, server='', vendor='', feature='', user='', status='', lic_files='', max_record_num=1000):
-        self.server = server
-        self.vendor = vendor
-        self.feature = feature
-        self.user = user
-        self.status = status
-        self.lic_files = lic_files
-        self.max_record_num = max_record_num
-
-        # Main data structrue for LicenseLog, save all license log information.
-        self.license_log_info_list = []
-
-        # Get self.license_log_info_list.
-        if self.feature:
-            self.get_license_log_info()
-
-    def get_license_log_info(self):
-        """
-        Get self.license_log_info_list.
-        """
-        # Get real license log path.
-        license_log = ''
-        license_server_host = self.server.split('@')[1]
-
-        if (not license_log) and self.lic_files:
-            lic_log_rec = re.compile(r'^.*lmgrd.*\s+-c\s+(.*)\s+-l\s+(\S+)\s*.*$')
-            command = 'ps -aux | grep lmgrd '
-
-            stdout_list = ssh_client(host_name=license_server_host, user_name=str(getpass.getuser()), command=command, timeout=1)
-
-            for line in stdout_list:
-                if my_match := lic_log_rec.match(line):
-                    license_file_info = my_match.group(1)
-
-                    if self.lic_files.find(license_file_info) != -1:
-                        license_log = my_match.group(2)
-
-        # Get expected information from license log.
-        if not license_log:
-            common.print_warning('*Warning* : Could not find ' + str(self.vendor) + ' license log file in ' + str(self.server) + ' ...')
-        else:
-            if os.path.exists(license_log):
-                grep_cmd = 'grep \'"%s"\' %s ' % (self.feature, license_log)
-                (return_code, stdout, stderr) = common.run_command(grep_cmd)
-                stdout_list = str(stdout, 'unicode_escape').split('\n')
-            else:
-                grep_cmd = 'grep \'"%s"\' %s | tail -n %s' % (self.feature, license_log, str(self.max_record_num))
-                stdout_list = ssh_client(host_name=license_server_host, user_name=str(getpass.getuser()), command=grep_cmd, timeout=20)
-
-            self.parse_license_log_info(license_log, stdout_list)
-
-    def parse_license_log_info(self, license_log, stdout_list):
-        """
-        Parse license log, get expected info, save into self.license_log_info_list.
-        """
-        if not stdout_list:
-            common.print_warning('*Warning* : Could not find any infomation when reading license log file ' + str(license_log) + '...')
-            return
-
-        if self.status == 'ALL':
-            log_rec = re.compile(r'^\s*([0-9:]+)\s*\(\S+\)\s+\b(DENIED|IN|OUT|UNSUPPORTED|QUEUED)+\b:\s+\"(.*%s.*)\".*\s+(.*%s.*)(?=@)@(\S+).\s*(.*)\s*$' % (self.feature, self.user))
-        else:
-            log_rec = re.compile(r'^\s*([0-9:]+)\s*\(\S+\)\s+\b(%s)+\b:\s+\"(.*%s.*)\".*\s+(.*%s.*)(?=@)@(\S+).\s*(.*)\s*$' % (self.status, self.feature, self.user))
-
-        info_num = len(stdout_list)
-
-        for i in range(info_num):
-            if i >= self.max_record_num:
-                break
-
-            line = stdout_list[info_num - 1 - i]
-
-            if my_match := log_rec.match(line):
-                log_time = my_match.group(1)
-                status = my_match.group(2)
-                feature = my_match.group(3)
-                user = my_match.group(4)
-                exec_host = my_match.group(5)
-                info = my_match.group(6).strip()
-
-                if info.find(']') != -1:
-                    info = info.split(']')[1]
-
-                license_record = LicenseRecord(log_time, status, feature, user, exec_host, info)
-                self.license_log_info_list.append(license_record)
-
-
 def switch_start_time(start_time, compare_second='', format=''):
     """
     Switch start_time format from "%a %m/%d %H:%M" to specified format (or start_second by default).
@@ -612,7 +510,7 @@ def switch_start_time(start_time, compare_second='', format=''):
         try:
             start_second = time.mktime(time.strptime(start_time_with_year, '%Y %a %m/%d %H:%M'))
         except Exception:
-            common.print_error('*Error* : variable "start_time_with_year", value is "' + str(start_time_with_year) + '", not follow the time format "%Y %a %m/%d %H:%M".')
+            common.print_error('*Error*: variable "start_time_with_year", value is "' + str(start_time_with_year) + '", not follow the time format "%Y %a %m/%d %H:%M".')
 
         if not compare_second:
             compare_second = time.time()
@@ -718,46 +616,6 @@ def parse_license_file(license_file):
                                               'vendor_daemon_path': my_match.group(3)}
 
     return license_file_dic
-
-
-def ssh_client(host_name='', port=22, user_name='', password='', command='', reconnect=False, timeout=10):
-    """
-    Ssh specified host, execute specified command, get stdout informaiton (return stdout_list).
-    """
-    stdout_list = []
-    client = paramiko.SSHClient()
-
-    try:
-        client.load_system_host_keys()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(host_name, port, user_name, password=password, timeout=timeout)
-
-        stdin, stdout, stderr = client.exec_command(command)
-        exit_status = stdout.channel.recv_exit_status()
-        result = stdout.read().decode()
-        stdout_list = str(result).splitlines()
-
-        if exit_status == 1:
-            common.print_error('*Error* : ssh connection is failed.')
-    except paramiko.AuthenticationException:
-        common.print_error('*Error* : authentication failed.')
-    except paramiko.SSHException as ssh_ex:
-        common.print_error('*Error* : ssh connection error: ' + str(ssh_ex))
-    except socket.error as socket_error:
-        if not reconnect:
-            common.print_warning('*Warning* : ssh fail.')
-
-            password = getpass.getpass('            Please input password:')
-            ssh_client(host_name=host_name, port=22, user_name=user_name, password=password, command=command, reconnect=True)
-        else:
-            common.print_error('*Error* : Socket error： ' + str(socket_error))
-    except Exception as error:
-        common.print_error('*Error* : Meet below error when ssh ' + str(host_name))
-        common.print_error('         ' + str(error))
-    finally:
-        client.close()
-
-    return stdout_list
 
 
 def parse_project_list_file(project_list_file):

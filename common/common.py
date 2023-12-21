@@ -1,5 +1,8 @@
 import subprocess
 import xlwt
+import paramiko
+import getpass
+import socket
 
 
 def print_error(message):
@@ -60,7 +63,50 @@ def write_excel(excel_file, contents_list, specified_sheet_name='default'):
             column_width = len(str(content_string)) * 256
 
             if column_width > worksheet.col(column).width:
-                worksheet.col(column).width = column_width
+                if column_width > 65536:
+                    column_width = 65536
+                else:
+                    worksheet.col(column).width = column_width
 
     # save excel
     workbook.save(excel_file)
+
+
+def ssh_client(host_name='', port=22, user_name='', password='', command='', reconnect=False, timeout=10):
+    """
+    Ssh specified host, execute specified command, get stdout informaiton (return stdout_list).
+    """
+    stdout_list = []
+    client = paramiko.SSHClient()
+
+    try:
+        client.load_system_host_keys()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(host_name, port, user_name, password=password, timeout=timeout)
+
+        stdin, stdout, stderr = client.exec_command(command)
+        exit_status = stdout.channel.recv_exit_status()
+        result = stdout.read().decode()
+        stdout_list = str(result).splitlines()
+
+        if exit_status == 1:
+            print_error('*Error*: ssh connection is failed.')
+    except paramiko.AuthenticationException:
+        print_error('*Error*: authentication failed.')
+    except paramiko.SSHException as ssh_ex:
+        print_error('*Error*: ssh connection error: ' + str(ssh_ex))
+    except socket.error as socket_error:
+        if not reconnect:
+            print_warning('*Warning*: ssh fail.')
+
+            password = getpass.getpass('            Please input password:')
+            ssh_client(host_name=host_name, port=22, user_name=user_name, password=password, command=command, reconnect=True)
+        else:
+            print_error('*Error*: Socket error： ' + str(socket_error))
+    except Exception as error:
+        print_error('*Error*: Meet below error when ssh ' + str(host_name))
+        print_error('         ' + str(error))
+    finally:
+        client.close()
+
+    return stdout_list

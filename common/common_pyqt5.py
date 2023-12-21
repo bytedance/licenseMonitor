@@ -1,5 +1,12 @@
-from PyQt5.QtWidgets import QDesktopWidget, QComboBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem, QHeaderView, QTableWidgetItem
+import re
+import datetime
+
+from PyQt5.QtWidgets import QDesktopWidget, QComboBox, QLineEdit, QListWidget, QCheckBox, QListWidgetItem
 from PyQt5.QtGui import QTextCursor
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
+from matplotlib.dates import num2date
 
 
 def center_window(window):
@@ -25,63 +32,6 @@ def text_edit_visible_position(text_edit_item, position='End'):
 
     text_edit_item.setTextCursor(cursor)
     text_edit_item.ensureCursorVisible()
-
-
-def gen_default_table(table=None, table_dic=None):
-    """
-    default sort: True
-    table: pyqt5 table widget
-    table_dic format:
-    table_dic = {'title': [title1, ...],
-                 'width': [width1, ...],
-                 'info': [[info1_1, ...], ...]
-                 }
-    'title' in table_dic: column title
-    'width' in table_dic: column width, 0 or None --> auto-adaptive column width
-    'info' in table_dic: table row infomation list
-
-    requirement:
-    1. the length of table_dic['title'] is equivalent to the length od table_dic['info'][i] for i in len(table_dic['info'])
-    2. if 'width' in table_dic, the length of table_dic['title'] is equivalent to the length of table_dic['width']
-    """
-    if ('info' in table_dic) and ('title' in table_dic):
-        # Get the number of table column
-        column_num = len(table_dic['title'])
-
-        # Get the number of table row
-        row_num = len(table_dic['info'])
-
-        table.setShowGrid(True)
-        table.setSortingEnabled(True)
-
-        table.setColumnCount(0)
-        table.setColumnCount(column_num)
-        table.setRowCount(0)
-        table.setRowCount(row_num)
-
-        # Set table title
-        table.setHorizontalHeaderLabels(table_dic['title'])
-
-        # Set column width
-        if 'width' in table_dic:
-            if len(table_dic['width']) == column_num:
-                for i in range(column_num):
-                    width = table_dic['width'][i]
-
-                    if width:
-                        table.setColumnWidth(i, width)
-                    else:
-                        table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
-
-        # Fill table
-        for i in range(row_num):
-            item_list = table_dic['info'][i]
-
-            if len(table_dic['info'][i]) != column_num:
-                continue
-
-            for item in item_list:
-                table.setItem(i, 0, QTableWidgetItem(item))
 
 
 class QComboCheckBox(QComboBox):
@@ -165,3 +115,99 @@ class QComboCheckBox(QComboBox):
         """
         super().clear()
         self.checkBoxList = []
+
+
+class FigureCanvasQTAgg(FigureCanvasQTAgg):
+    """
+    Generate a new figure canvas.
+    """
+    def __init__(self):
+        self.figure = Figure()
+        self.axes = None
+        super().__init__(self.figure)
+
+
+class NavigationToolbar2QT(NavigationToolbar2QT):
+    """
+    Enhancement for NavigationToolbar2QT, can get and show label value.
+    """
+    def __init__(self, canvas, parent, coordinates=True, x_is_date=True):
+        super().__init__(canvas, parent, coordinates)
+        self.x_is_date = x_is_date
+
+    @staticmethod
+    def bisection(event_xdata, xdata_list):
+        xdata = None
+        index = None
+        lower = 0
+        upper = len(xdata_list) - 1
+        bisection_index = (upper - lower) // 2
+
+        if xdata_list:
+            if event_xdata > xdata_list[upper]:
+                xdata = xdata_list[upper]
+                index = upper
+            elif (event_xdata < xdata_list[lower]) or (len(xdata_list) <= 2):
+                xdata = xdata_list[lower]
+                index = lower
+            elif event_xdata in xdata_list:
+                xdata = event_xdata
+                index = xdata_list.index(event_xdata)
+
+            while xdata is None:
+                if upper - lower == 1:
+                    if event_xdata - xdata_list[lower] <= xdata_list[upper] - event_xdata:
+                        xdata = xdata_list[lower]
+                        index = lower
+                    else:
+                        xdata = xdata_list[upper]
+                        index = upper
+
+                    break
+
+                if event_xdata > xdata_list[bisection_index]:
+                    lower = bisection_index
+                elif event_xdata < xdata_list[bisection_index]:
+                    upper = bisection_index
+
+                bisection_index = (upper - lower) // 2 + lower
+
+        return (xdata, index)
+
+    def _mouse_event_to_message(self, event):
+        if event.inaxes and event.inaxes.get_navigate():
+            try:
+                if self.x_is_date:
+                    event_xdata = num2date(event.xdata).strftime('%Y,%m,%d,%H,%M,%S')
+                else:
+                    event_xdata = event.xdata
+            except (ValueError, OverflowError):
+                pass
+            else:
+                if self.x_is_date and (len(event_xdata.split(',')) == 6):
+                    (year, month, day, hour, minute, second) = event_xdata.split(',')
+                    event_xdata = datetime.datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
+
+                xdata_list = list(self.canvas.figure.gca().get_lines()[0].get_xdata())
+                (xdata, index) = self.bisection(event_xdata, sorted(xdata_list))
+
+                if xdata is not None:
+                    info_list = []
+
+                    for line in self.canvas.figure.gca().get_lines():
+                        label = line.get_label()
+                        ydata_string = line.get_ydata()
+                        ydata_list = list(ydata_string)
+                        ydata = ydata_list[index]
+
+                        info_list.append('%s=%s' % (label, ydata))
+
+                    info_string = '  '.join(info_list)
+
+                    if self.x_is_date:
+                        xdata_string = xdata.strftime('%Y-%m-%d %H:%M:%S')
+                        xdata_string = re.sub(r' 00:00:00', '', xdata_string)
+                        info_string = '[%s]\n%s' % (xdata_string, info_string)
+
+                    return info_string
+        return ''

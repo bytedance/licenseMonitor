@@ -37,7 +37,7 @@ def gen_shell_tools():
     """
     Generate shell scripts under <LICENSE_MONITOR_INSTALL_PATH>/tools.
     """
-    tool_list = ['bin/license_monitor', 'bin/license_sample', 'tools/config_product_feature_relationship', 'tools/gen_LM_LICENSE_FILE', 'tools/get_product_feature_relationship', 'tools/patch']
+    tool_list = ['bin/license_monitor', 'bin/license_sample', 'tools/config_product_feature_relationship', 'tools/gen_LM_LICENSE_FILE', 'tools/get_product_feature_relationship', 'tools/patch', 'tools/update_product_feature_relationship', 'tools/update_project_execute_host_with_lsf']
 
     for tool_name in tool_list:
         tool = str(CWD) + '/' + str(tool_name)
@@ -101,7 +101,7 @@ def gen_config_file():
         try:
             with open(config_file, 'w') as CF:
                 CF.write('''# Specify EDA license administrators.
-administrators = "''' + str(USER) + '''"
+administrators = "ALL"
 
 # Specify lmstat path, example "/eda/synopsys/scl/2021.03/linux64/bin/lmstat".
 lmstat_path = "''' + str(lmstat_path) + '''"

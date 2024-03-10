@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-################################
-# File Name   : message.py
-# Author      : liyanqing
-# Created On  : 2021-11-30 00:00:00
-# Description :
-################################
 import os
 import sys
 import argparse
@@ -37,7 +31,7 @@ def read_args():
     title_string = ' '.join(args.title)
     message_string = ' '.join(args.message)
 
-    return (title_string, message_string)
+    return title_string, message_string
 
 
 class ShowMessage(QMainWindow):

@@ -1,17 +1,10 @@
 # -*- coding: utf-8 -*-
-################################
-# File Name   : get_product_feature_relationship.py
-# Author      : liyanqing
-# Created On  : 2021-11-30 17:25:47
-# Description :
-################################
 import os
 import re
 import sys
-import argparse
 import yaml
-import stat
 import copy
+import argparse
 
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
@@ -51,18 +44,18 @@ def read_args():
     # Check vendor daemon valid or not.
     for vendor_daemon in args.vendors:
         if vendor_daemon not in valid_vendor_daemon_list:
-            common.print_error('*Error*: "' + str(vendor_daemon) + '": unsupported vendor daemon.')
+            common.bprint('"' + str(vendor_daemon) + '": unsupported vendor daemon.', level='Error')
             sys.exit(1)
 
     # Check license file exists or not.
     for license_file in args.license_files:
         if not os.path.exists(license_file):
-            common.print_error('*Error*: "' + str(license_file) + '": No such license file.')
+            common.bprint('"' + str(license_file) + '": No such license file.', level='Error')
             sys.exit(1)
 
     # Make sure the number of vendors and license_files are the same.
     if len(args.vendors) != len(args.license_files):
-        common.print_error('*Error*: The number of vendors and license_files are inconsistent.')
+        common.bprint('The number of vendors and license_files are inconsistent.', level='Error')
         sys.exit(1)
 
     # Check output directory exists or not.
@@ -70,12 +63,12 @@ def read_args():
     output_file_dir = os.path.dirname(args.output_file)
 
     if not os.path.exists(output_file_dir):
-        common.print_error('*Error*: "' + str(output_file_dir) + '": No such output file directory.')
+        common.bprint('"' + str(output_file_dir) + '": No such output file directory.', level='Error')
         sys.exit(1)
 
     # Check output file exists or not.
     if os.path.exists(args.output_file):
-        common.print_error('*Error*: "' + str(args.output_file) + '": output file exists, please remove it first.')
+        common.bprint('"' + str(args.output_file) + '": output file exists, please remove it first.', level='Error')
         sys.exit(1)
 
     return args.vendors, args.license_files, args.product_format, args.output_file
@@ -176,7 +169,7 @@ class GetProductFeatureRelationship():
                             break
 
                     if not find_mark:
-                        common.print_warning('*Warning*: Not find product_id "' + str(current_product_id) + '" for feature "' + str(feature) + '".')
+                        common.bprint('Not find product_id "' + str(current_product_id) + '" for feature "' + str(feature) + '".', level='Warning')
 
         return product_dic_list
 
@@ -284,7 +277,7 @@ class GetProductFeatureRelationship():
         # Verify product_feature_list and liense_file_feature_list.
         for feature in license_file_feature_list:
             if feature not in feature_dic:
-                common.print_warning('*Warning*: No product_id/product_name information for feature "' + str(feature) + '".')
+                common.bprint('No product_id/product_name information for feature "' + str(feature) + '".', level='Warning')
 
     def write_output_file(self, relationship_dic={}, output_file=''):
         """
@@ -306,7 +299,7 @@ class GetProductFeatureRelationship():
             with open(output_file, 'w', encoding='utf-8') as OF:
                 yaml.dump(relationship_dic, OF)
 
-            os.chmod(output_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(output_file, 0o777)
 
     def run(self):
         """

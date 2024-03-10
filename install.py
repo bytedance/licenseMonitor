@@ -1,6 +1,5 @@
 import os
 import sys
-import stat
 import getpass
 
 CWD = os.getcwd()
@@ -37,7 +36,7 @@ def gen_shell_tools():
     """
     Generate shell scripts under <LICENSE_MONITOR_INSTALL_PATH>/tools.
     """
-    tool_list = ['bin/license_monitor', 'bin/license_sample', 'tools/config_product_feature_relationship', 'tools/gen_LM_LICENSE_FILE', 'tools/get_product_feature_relationship', 'tools/patch', 'tools/update_product_feature_relationship', 'tools/update_project_execute_host_with_lsf']
+    tool_list = ['bin/license_monitor', 'bin/license_sample', 'tools/collect_feature_record_from_license_log', 'tools/config_product_feature_relationship', 'tools/gen_LM_LICENSE_FILE', 'tools/get_license_log', 'tools/get_product_feature_relationship', 'tools/patch', 'tools/seedb', 'tools/show_license_log_info', 'tools/update_product_feature_relationship', 'tools/update_project_execute_host_with_lsf', 'tools/view_product_feature_relationship']
 
     for tool_name in tool_list:
         tool = str(CWD) + '/' + str(tool_name)
@@ -64,7 +63,7 @@ export LICENSE_MONITOR_INSTALL_PATH=""" + str(CWD) + """
 # Execute """ + str(tool_name) + """.py.
 python3 $LICENSE_MONITOR_INSTALL_PATH/""" + str(tool_name) + '.py $@')
 
-            os.chmod(tool, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(tool, 0o755)
         except Exception as error:
             print('*Error*: Failed on generating script "' + str(tool) + '": ' + str(error))
             sys.exit(1)
@@ -78,7 +77,7 @@ def gen_config_file():
     lmstat_path = str(CWD) + '/tools/lmstat'
     db_path = str(CWD) + '/db'
     lm_license_file = str(CWD) + '/config/LM_LICENSE_FILE'
-    product_feature_file = str(CWD) + '/config/product_feature/product_feature.yaml'
+    product_feature_file = str(CWD) + '/config/others/product_feature.yaml'
     project_list_file = str(CWD) + '/config/project/project_list'
     project_submit_host_file = str(CWD) + '/config/project/project_submit_host'
     project_execute_host_file = str(CWD) + '/config/project/project_execute_host'
@@ -116,9 +115,6 @@ db_path = "''' + str(db_path) + '''"
 # It could be one or serveral items between "user/execute_host/submit_host".
 project_primary_factors = "user  execute_host  submit_host"
 
-# Enable "others" project on COST tab, so cost can always be shared.
-enable_cost_others_project = True
-
 # Max record number when searching license log.
 max_record_num = 1000
 
@@ -126,7 +122,7 @@ max_record_num = 1000
 fresh_interval = 300
 ''')
 
-            os.chmod(config_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(config_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(config_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -163,7 +159,7 @@ def gen_lm_license_file(lm_license_file):
 
 ''')
 
-            os.chmod(lm_license_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(lm_license_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(lm_license_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -181,7 +177,7 @@ def gen_product_feature_file(product_feature_file):
                 PFF.write('''# Please generate this file with script ''' + str(CWD) + '''/tools/get_product_feature_relationship.
 ''')
 
-            os.chmod(product_feature_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(product_feature_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(product_feature_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -202,7 +198,7 @@ def gen_project_list_file(project_list_file):
 
 ''')
 
-            os.chmod(project_list_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(project_list_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(project_list_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -223,7 +219,7 @@ def gen_project_submit_host_file(project_submit_host_file):
 
 ''')
 
-            os.chmod(project_submit_host_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(project_submit_host_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(project_submit_host_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -244,7 +240,7 @@ def gen_project_execute_host_file(project_execute_host_file):
 
 ''')
 
-            os.chmod(project_execute_host_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(project_execute_host_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(project_execute_host_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -265,7 +261,7 @@ def gen_project_user_file(project_user_file):
 
 ''')
 
-            os.chmod(project_user_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(project_user_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(project_user_file) + '" for write: ' + str(error))
             sys.exit(1)
@@ -286,7 +282,7 @@ def gen_feature_product_filter_file(tab_name, filter_type, item_name, filter_fil
 
 ''')
 
-            os.chmod(filter_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(filter_file, 0o755)
         except Exception as error:
             print('*Error*: Failed on opening config file "' + str(filter_file) + '" for write: ' + str(error))
             sys.exit(1)

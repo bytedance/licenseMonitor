@@ -3,7 +3,6 @@
 import os
 import re
 import sys
-import stat
 import time
 import copy
 import yaml
@@ -22,7 +21,16 @@ from common import common_license
 from common import common_sqlite3
 from config import config
 
+# Import local config file if exists.
+local_config_dir = str(os.environ['HOME']) + '/.licenseMonitor/config'
+local_config = str(local_config_dir) + '/config.py'
+
+if os.path.exists(local_config):
+    sys.path.append(local_config_dir)
+    import config
+
 os.environ['PYTHONUNBUFFERED'] = '1'
+VERSION = 'V1.3.1 (2024.03.06)'
 USER = getpass.getuser()
 
 # Solve some unexpected warning message.
@@ -32,7 +40,7 @@ if 'XDG_RUNTIME_DIR' not in os.environ:
     if not os.path.exists(os.environ['XDG_RUNTIME_DIR']):
         os.makedirs(os.environ['XDG_RUNTIME_DIR'])
 
-    os.chmod(os.environ['XDG_RUNTIME_DIR'], stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+    os.chmod(os.environ['XDG_RUNTIME_DIR'], 0o777)
 
 
 def read_args():
@@ -62,7 +70,7 @@ def read_args():
     if args.user and (not args.tab):
         args.tab = 'USAGE'
 
-    return (args.feature, args.user, args.tab)
+    return args.feature, args.user, args.tab
 
 
 class MainWindow(QMainWindow):
@@ -71,68 +79,38 @@ class MainWindow(QMainWindow):
     """
     def __init__(self, specified_feature, specified_user, specified_tab):
         super().__init__()
-        self.license_dic = {}
 
-        # Enable detail information on UTILIZATION tab.
-        self.enable_utilization_detail = False
+        # Get administrator list, check admin permission.
+        common.bprint('Check admin permission', date_format='%Y-%m-%d %H:%M:%S')
 
-        # Enable "product" instead of "feature".
-        self.enable_utilization_product = False
-        self.enable_cost_product = False
-
-        # Basic setting.
-        self.db_dic = self.get_db_info()
-        self.license_dic_second = 0
-
-        # Get administrator list.
         if hasattr(config, 'administrators') and config.administrators:
             self.administrator_list = config.administrators.split()
+
+            if ('all' not in self.administrator_list) and ('ALL' not in self.administrator_list) and (USER not in self.administrator_list):
+                common.bprint('You are not administrator, certain functions is prohibited!', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
         else:
-            common.print_warning('*Warning*: No "administrators" is specified on config file, some functions are limited.')
+            common.bprint('You are not administrator, certain functions is prohibited!', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
             self.administrator_list = []
 
-        # Notice no-admin user.
-        if ('all' not in self.administrator_list) and ('ALL' not in self.administrator_list) and (USER not in self.administrator_list):
-            common.print_warning('*Warning*: You are not administrator, cannot access some function!')
-
-        # Get project related information.
-        project_list_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list'
-        self.project_list = common_license.parse_project_list_file(project_list_file)
-
-        # Get self.project_setting_dic.
-        project_setting_dic = {}
+        # Initialization for class variables.
+        self.license_dic = {}
+        self.license_dic_second = 0
+        self.db_dic = {}
+        self.feature_product_dic = {}
+        self.product_feature_dic = {}
+        self.project_list = []
         self.project_setting_dic = {}
         self.project_setting_create_second_list = []
-        project_setting_db_path = str(config.db_path) + '/project_setting'
+        self.feature_record_dic = {}
+        self.enable_utilization_detail = False
+        self.enable_utilization_product = False
+        self.enable_utilization_log_search = False
+        self.enable_cost_others_project = False
+        self.enable_cost_product = False
+        self.enable_cost_log_search = False
 
-        if os.path.exists(project_setting_db_path):
-            project_setting_dic = common_license.parse_project_setting_db_path(project_setting_db_path)
-        else:
-            common.print_warning('*Warning*: "' + str(project_setting_db_path) + '": No such directory.')
-
-        for create_time in project_setting_dic.keys():
-            create_second = int(time.mktime(time.strptime(str(create_time), '%Y%m%d%H%M%S')))
-            self.project_setting_dic.setdefault(create_second, project_setting_dic[create_time])
-            self.project_setting_create_second_list.append(create_second)
-
-        # Get feature/product filter list.
-        self.utilization_white_feature_list = self.parse_feature_product_filter_file('utilization', 'white', 'feature')
-        self.utilization_black_feature_list = self.parse_feature_product_filter_file('utilization', 'black', 'feature')
-        self.utilization_white_product_list = self.parse_feature_product_filter_file('utilization', 'white', 'product')
-        self.utilization_black_product_list = self.parse_feature_product_filter_file('utilization', 'black', 'product')
-        self.cost_white_feature_list = self.parse_feature_product_filter_file('cost', 'white', 'feature')
-        self.cost_black_feature_list = self.parse_feature_product_filter_file('cost', 'black', 'feature')
-        self.cost_white_product_list = self.parse_feature_product_filter_file('cost', 'white', 'product')
-        self.cost_black_product_list = self.parse_feature_product_filter_file('cost', 'black', 'product')
-
-        # Enable "others" project on COST tab.
-        if hasattr(config, 'enable_cost_others_project'):
-            self.enable_cost_others_project = config.enable_cost_others_project
-        else:
-            self.enable_cost_others_project = True
-
-        if self.enable_cost_others_project:
-            self.project_list.append('others')
+        # Instantiate class ShowLicenseLogInfo.
+        self.my_show_license_log_file = ShowLicenseLogInfo()
 
         # Generate GUI.
         self.init_ui()
@@ -171,6 +149,9 @@ class MainWindow(QMainWindow):
         self.switch_tab(specified_tab)
 
     def get_license_dic(self, force=False):
+        """
+        Get license_dic based on config/LM_LICENSE_FILE.
+        """
         # Not update license_dic repeatedly in config.fresh_interval seconds.
         current_second = int(time.time())
 
@@ -181,10 +162,7 @@ class MainWindow(QMainWindow):
 
         self.license_dic_second = current_second
 
-        # Print loading license informaiton message.
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Loading license info, please wait a moment ...')
+        common.bprint('Load license info ...', date_format='%Y-%m-%d %H:%M:%S')
 
         # Print loading license informaiton message with GUI.
         my_show_message = ShowMessage('Info', 'Loading license info, please wait a moment ...')
@@ -209,7 +187,7 @@ class MainWindow(QMainWindow):
         if not hasattr(config, 'lmstat_path'):
             config.lmstat_path = ''
         elif config.lmstat_path and not os.path.exists(config.lmstat_path):
-            common.print_warning('*Warning*: "' + str(config.lmstat_path) + '": no such lmstat file!')
+            common.bprint('"' + str(config.lmstat_path) + '": no such lmstat file!', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
             config.lmstat_path = ''
 
         if not hasattr(config, 'lmstat_bsub_command'):
@@ -222,7 +200,7 @@ class MainWindow(QMainWindow):
         my_show_message.terminate()
 
         if not self.license_dic:
-            common.print_warning('*Warning*: Not find any valid license information.')
+            common.bprint('Not find any valid license information.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
 
     def get_license_server_list(self, license_dic={}):
         """
@@ -237,7 +215,9 @@ class MainWindow(QMainWindow):
             if license_server not in license_server_list:
                 license_server_list.append(license_server)
 
-        return (license_server_list)
+        license_server_list.sort()
+
+        return license_server_list
 
     def get_vendor_daemon_list(self, license_dic={}, specified_license_server_list=['ALL', ]):
         """
@@ -254,49 +234,9 @@ class MainWindow(QMainWindow):
                     if vendor_daemon not in vendor_daemon_list:
                         vendor_daemon_list.append(vendor_daemon)
 
-        return (vendor_daemon_list)
+        vendor_daemon_list.sort()
 
-    def get_db_info(self):
-        """
-        Get curve/utilization/usage database information.
-        """
-        db_dic = {}
-
-        if hasattr(config, 'db_path') and config.db_path and os.path.exists(config.db_path):
-            license_server_db_path = str(config.db_path) + '/license_server'
-
-            if not os.path.exists(license_server_db_path):
-                common.print_warning('*Warning*: "' + str(license_server_db_path) + '": No such directory.')
-            else:
-                for license_server in os.listdir(license_server_db_path):
-                    license_server_path = str(license_server_db_path) + '/' + str(license_server)
-
-                    if re.match(r'^\d+@\S+$', license_server) and os.path.isdir(license_server_path):
-                        db_dic.setdefault(license_server, {})
-
-                        for vendor_daemon in os.listdir(license_server_path):
-                            vendor_daemon_path = str(license_server_path) + '/' + str(vendor_daemon)
-                            curve_db_path = str(vendor_daemon_path) + '/utilization.db'
-                            usage_db_path = str(vendor_daemon_path) + '/usage.db'
-
-                            if self.enable_utilization_detail:
-                                utilization_db_path = str(vendor_daemon_path) + '/utilization.db'
-                            else:
-                                utilization_db_path = str(vendor_daemon_path) + '/utilization_day.db'
-
-                            if os.path.isdir(vendor_daemon_path):
-                                db_dic[license_server].setdefault(vendor_daemon, {})
-
-                                if os.path.exists(curve_db_path):
-                                    db_dic[license_server][vendor_daemon].setdefault('curve', curve_db_path)
-
-                                if os.path.exists(usage_db_path):
-                                    db_dic[license_server][vendor_daemon].setdefault('usage', usage_db_path)
-
-                                if os.path.exists(utilization_db_path):
-                                    db_dic[license_server][vendor_daemon].setdefault('utilization', utilization_db_path)
-
-        return db_dic
+        return vendor_daemon_list
 
     def parse_feature_product_filter_file(self, tab_name, filter_type, item_name):
         """
@@ -363,9 +303,8 @@ class MainWindow(QMainWindow):
             self.gen_cost_tab()
 
         # Show main window
-        self.setWindowTitle('licenseMonitor')
         self.resize(1200, 580)
-        self.setWindowTitle('licenseMonitor')
+        self.setWindowTitle('licenseMonitor ' + str(VERSION))
         self.setWindowIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/monitor.ico'))
         common_pyqt5.center_window(self)
 
@@ -448,22 +387,30 @@ class MainWindow(QMainWindow):
             enable_utilization_product_action = QAction('Enable Utilization Product', self, checkable=True)
             enable_utilization_product_action.triggered.connect(self.func_enable_utilization_product)
 
-            enable_cost_product_action = QAction('Enable Cost Product', self, checkable=True)
-            enable_cost_product_action.triggered.connect(self.func_enable_cost_product)
+            enable_utilization_log_search_action = QAction('Enable Utilization Log Search', self, checkable=True)
+            enable_utilization_log_search_action.triggered.connect(self.func_enable_utilization_log_search)
 
             enable_cost_others_project_action = QAction('Enable Cost Others Project', self, checkable=True)
             enable_cost_others_project_action.triggered.connect(self.func_enable_cost_others_project)
 
+            enable_cost_product_action = QAction('Enable Cost Product', self, checkable=True)
+            enable_cost_product_action.triggered.connect(self.func_enable_cost_product)
+
             if self.enable_cost_others_project:
                 enable_cost_others_project_action.setChecked(True)
+
+            enable_cost_log_search_action = QAction('Enable Cost Log Search', self, checkable=True)
+            enable_cost_log_search_action.triggered.connect(self.func_enable_cost_log_search)
 
         setup_menu = menubar.addMenu('Setup')
 
         if ('all' in self.administrator_list) or ('ALL' in self.administrator_list) or (USER in self.administrator_list):
             setup_menu.addAction(enable_utilization_detail_action)
             setup_menu.addAction(enable_utilization_product_action)
-            setup_menu.addAction(enable_cost_product_action)
+            setup_menu.addAction(enable_utilization_log_search_action)
             setup_menu.addAction(enable_cost_others_project_action)
+            setup_menu.addAction(enable_cost_product_action)
+            setup_menu.addAction(enable_cost_log_search_action)
 
         # Help
         version_action = QAction('Version', self)
@@ -484,11 +431,9 @@ class MainWindow(QMainWindow):
         """
         if state:
             self.enable_utilization_detail = True
-            self.db_dic = self.get_db_info()
             self.utilization_tab_begin_date_edit.setDate(QDate.currentDate().addDays(-7))
         else:
             self.enable_utilization_detail = False
-            self.db_dic = self.get_db_info()
             self.utilization_tab_begin_date_edit.setDate(QDate.currentDate().addMonths(-1))
 
     def func_enable_utilization_product(self, state):
@@ -500,52 +445,98 @@ class MainWindow(QMainWindow):
         else:
             self.enable_utilization_product = False
 
+    def func_enable_utilization_log_search(self, state):
+        """
+        Search feature usage information on license log file.
+        """
+        if state:
+            self.enable_utilization_log_search = True
+        else:
+            self.enable_utilization_log_search = False
+
+    def update_product_feature_info(self):
+        """
+        Update self.feature_product_dic with config/others/product_feature.yaml.
+        """
+        product_feature_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/others/product_feature.yaml'
+
+        if os.path.exists(product_feature_file):
+            common.bprint('Parse config/others/product_feature.yaml', date_format='%Y-%m-%d %H:%M:%S')
+
+            with open(product_feature_file, 'r') as PFF:
+                self.feature_product_dic = yaml.load(PFF, Loader=yaml.FullLoader)
+
+                # Get self.product_feature_dic based on self.feature_product_dic.
+                self.product_feature_dic = {}
+
+                for vendor_daemon in self.feature_product_dic.keys():
+                    self.product_feature_dic.setdefault(vendor_daemon, {})
+
+                    for feature in self.feature_product_dic[vendor_daemon].keys():
+                        for product in self.feature_product_dic[vendor_daemon][feature]:
+                            self.product_feature_dic[vendor_daemon].setdefault(product, [])
+                            self.product_feature_dic[vendor_daemon][product].append(feature)
+
     def switch_product_on_utilization_dic(self, utilization_dic):
         """
         Switch "feature" to "product" on utilization_dic.
         """
         product_utilization_dic = {}
         specified_license_product = self.utilization_tab_product_line.text().strip()
-        product_feature_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/product_feature/product_feature.yaml'
+        self.update_product_feature_info()
 
-        if os.path.exists(product_feature_file):
-            with open(product_feature_file, 'r') as PFF:
-                product_feature_dic = yaml.load(PFF, Loader=yaml.FullLoader)
+        for vendor_daemon in self.feature_product_dic.keys():
+            for feature in self.feature_product_dic[vendor_daemon].keys():
+                for product in self.feature_product_dic[vendor_daemon][feature]:
+                    if ((feature in utilization_dic) and (vendor_daemon in utilization_dic[feature])) and ((not specified_license_product) or (specified_license_product == product) or re.search(re.escape(specified_license_product.lower()), product.lower())):
+                        # Save sample data.
+                        product_utilization_dic.setdefault(product, {})
+                        product_utilization_dic[product].setdefault(vendor_daemon, {'sample_data': {}, 'summary': {'avg_utilization': 0}})
 
-                for vendor_daemon in product_feature_dic.keys():
-                    for feature in product_feature_dic[vendor_daemon].keys():
-                        for product in product_feature_dic[vendor_daemon][feature]:
-                            if (feature in utilization_dic) and (vendor_daemon in utilization_dic[feature]):
-                                if (not specified_license_product) or (specified_license_product == product):
-                                    product_utilization_dic.setdefault(product, {})
-                                    product_utilization_dic[product].setdefault(vendor_daemon, {})
+                        if utilization_dic[feature][vendor_daemon]['summary']['avg_utilization'] == 0.09:
+                            product_utilization_dic[product][vendor_daemon]['summary']['avg_utilization'] = 0.09
 
-                                    sample_date_dic = utilization_dic[feature][vendor_daemon]
+                        sample_date_dic = utilization_dic[feature][vendor_daemon]['sample_data']
 
-                                    if not product_utilization_dic[product][vendor_daemon]:
-                                        product_utilization_dic[product][vendor_daemon] = sample_date_dic
-                                    else:
-                                        for sample_date in sample_date_dic.keys():
-                                            if sample_date not in product_utilization_dic[product][vendor_daemon].keys():
-                                                product_utilization_dic[product][vendor_daemon].setdefault(sample_date, sample_date_dic[sample_date])
-                                            elif product_utilization_dic[product][vendor_daemon][sample_date]['utilization'] < sample_date_dic[sample_date]['utilization']:
-                                                product_utilization_dic[product][vendor_daemon][sample_date]['utilization'] = sample_date_dic[sample_date]['utilization']
+                        if not product_utilization_dic[product][vendor_daemon]['sample_data']:
+                            product_utilization_dic[product][vendor_daemon]['sample_data'] = sample_date_dic
+                        else:
+                            for sample_date in sample_date_dic.keys():
+                                if sample_date not in product_utilization_dic[product][vendor_daemon]['sample_data'].keys():
+                                    product_utilization_dic[product][vendor_daemon]['sample_data'].setdefault(sample_date, sample_date_dic[sample_date])
+                                elif product_utilization_dic[product][vendor_daemon]['sample_data'][sample_date]['utilization'] < sample_date_dic[sample_date]['utilization']:
+                                    product_utilization_dic[product][vendor_daemon]['sample_data'][sample_date]['utilization'] = sample_date_dic[sample_date]['utilization']
 
         # Filter with white/black product list.
+        utilization_white_product_list = self.parse_feature_product_filter_file('utilization', 'white', 'product')
+        utilization_black_product_list = self.parse_feature_product_filter_file('utilization', 'black', 'product')
         filtered_product_utilization_dic = copy.deepcopy(product_utilization_dic)
 
-        if self.utilization_white_product_list:
+        if utilization_white_product_list:
             filtered_product_utilization_dic = {}
 
-            for white_product in self.utilization_white_product_list:
+            for white_product in utilization_white_product_list:
                 for product in product_utilization_dic.keys():
                     if re.match(white_product, product):
                         filtered_product_utilization_dic[product] = product_utilization_dic[product]
-        elif self.utilization_black_product_list:
-            for black_product in self.utilization_black_product_list:
+        elif utilization_black_product_list:
+            for black_product in utilization_black_product_list:
                 for product in product_utilization_dic.keys():
                     if re.match(black_product, product):
                         del filtered_product_utilization_dic[product]
+
+        # Save summary data.
+        for product in filtered_product_utilization_dic.keys():
+            for vendor_daemon in filtered_product_utilization_dic[product].keys():
+                utilization_list = []
+
+                for sample_date in filtered_product_utilization_dic[product][vendor_daemon]['sample_data'].keys():
+                    utilization_list.append(filtered_product_utilization_dic[product][vendor_daemon]['sample_data'][sample_date]['utilization'])
+
+                avg_utilization = round(sum(utilization_list) / len(utilization_list), 1)
+
+                if avg_utilization >= 0.1:
+                    filtered_product_utilization_dic[product][vendor_daemon]['summary'] = {'avg_utilization': avg_utilization}
 
         return filtered_product_utilization_dic
 
@@ -564,47 +555,88 @@ class MainWindow(QMainWindow):
         """
         product_cost_dic = {}
         specified_license_product = self.cost_tab_product_line.text().strip()
-        product_feature_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/product_feature/product_feature.yaml'
+        self.update_product_feature_info()
 
-        if os.path.exists(product_feature_file):
-            with open(product_feature_file, 'r') as PFF:
-                product_feature_dic = yaml.load(PFF, Loader=yaml.FullLoader)
+        for vendor_daemon in self.feature_product_dic.keys():
+            for feature in self.feature_product_dic[vendor_daemon].keys():
+                for product in self.feature_product_dic[vendor_daemon][feature]:
+                    if ((feature in cost_dic) and (vendor_daemon in cost_dic[feature])) and ((not specified_license_product) or (specified_license_product == product) or re.search(re.escape(specified_license_product.lower()), product.lower())):
+                        # Save project_runtime info.
+                        product_cost_dic.setdefault(product, {})
+                        product_cost_dic[product].setdefault(vendor_daemon, {'project_runtime': {}, 'project_rate': {}, 'total_runtime': 0})
 
-                for vendor_daemon in product_feature_dic.keys():
-                    for feature in product_feature_dic[vendor_daemon].keys():
-                        for product in product_feature_dic[vendor_daemon][feature]:
-                            if (feature in cost_dic) and (vendor_daemon in cost_dic[feature]):
-                                if (not specified_license_product) or (specified_license_product == product):
-                                    product_cost_dic.setdefault(product, {})
-                                    product_cost_dic[product].setdefault(vendor_daemon, {})
-                                    project_dic = cost_dic[feature][vendor_daemon]
+                        project_dic = cost_dic[feature][vendor_daemon]['project_runtime']
 
-                                    if not product_cost_dic[product][vendor_daemon]:
-                                        product_cost_dic[product][vendor_daemon] = project_dic
-                                    else:
-                                        for project in project_dic.keys():
-                                            if project not in product_cost_dic[product][vendor_daemon].keys():
-                                                product_cost_dic[product][vendor_daemon].setdefault(project, project_dic[project])
-                                            else:
-                                                product_cost_dic[product][vendor_daemon][project] += project_dic[project]
+                        if not product_cost_dic[product][vendor_daemon]['project_runtime']:
+                            product_cost_dic[product][vendor_daemon]['project_runtime'] = project_dic
+                        else:
+                            for project in project_dic.keys():
+                                if project not in product_cost_dic[product][vendor_daemon]['project_runtime'].keys():
+                                    product_cost_dic[product][vendor_daemon]['project_runtime'].setdefault(project, project_dic[project])
+                                else:
+                                    product_cost_dic[product][vendor_daemon]['project_runtime'][project] += project_dic[project]
+
+                        # Save total_runtime info.
+                        if (cost_dic[feature][vendor_daemon]['total_runtime'] == 3600) and (product_cost_dic[product][vendor_daemon]['total_runtime'] <= 3600):
+                            product_cost_dic[product][vendor_daemon]['total_runtime'] = 3600
+                        else:
+                            product_cost_dic[product][vendor_daemon]['total_runtime'] += cost_dic[feature][vendor_daemon]['total_runtime']
 
         # Filter with white/black product list.
+        cost_white_product_list = self.parse_feature_product_filter_file('cost', 'white', 'product')
+        cost_black_product_list = self.parse_feature_product_filter_file('cost', 'black', 'product')
         filtered_product_cost_dic = copy.deepcopy(product_cost_dic)
 
-        if self.cost_white_product_list:
+        if cost_white_product_list:
             filtered_product_cost_dic = {}
 
-            for white_product in self.cost_white_product_list:
+            for white_product in cost_white_product_list:
                 for product in product_cost_dic.keys():
                     if re.match(white_product, product):
                         filtered_product_cost_dic[product] = product_cost_dic[product]
-        elif self.cost_black_product_list:
-            for black_product in self.cost_black_product_list:
+        elif cost_black_product_list:
+            for black_product in cost_black_product_list:
                 for product in product_cost_dic.keys():
                     if re.match(black_product, product):
                         del filtered_product_cost_dic[product]
 
+        # Get project_rate.
+        for product in filtered_product_cost_dic.keys():
+            for vendor_daemon in filtered_product_cost_dic[product].keys():
+                project_rate = 0
+                total_runtime = filtered_product_cost_dic[product][vendor_daemon]['total_runtime']
+
+                for project in filtered_product_cost_dic[product][vendor_daemon]['project_runtime'].keys():
+                    if total_runtime == 0:
+                        project_rate = 0
+                    else:
+                        project_runtime = filtered_product_cost_dic[product][vendor_daemon]['project_runtime'][project]
+                        project_rate = round(100*project_runtime/total_runtime, 2)
+
+                    if re.match(r'^(\d+)\.0+$', str(project_rate)):
+                        my_match = re.match(r'^(\d+)\.0+$', str(project_rate))
+                        project_rate = int(my_match.group(1))
+
+                    filtered_product_cost_dic[product][vendor_daemon]['project_rate'][project] = project_rate
+
         return filtered_product_cost_dic
+
+    def update_project_list(self):
+        """
+        Update self.project_list with config/project/project_list.
+        """
+        common.bprint('Parse config/project/project_list', date_format='%Y-%m-%d %H:%M:%S')
+
+        self.project_list = []
+        project_list_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list'
+
+        if os.path.exists(project_list_file):
+            self.project_list = common_license.parse_project_list_file(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list')
+
+        if self.enable_cost_others_project and ('others' not in self.project_list):
+            self.project_list.append('others')
+        elif (not self.enable_cost_others_project) and ('others' in self.project_list):
+            self.project_list.remove('others')
 
     def func_enable_cost_others_project(self, state):
         """
@@ -612,21 +644,23 @@ class MainWindow(QMainWindow):
         """
         if state:
             self.enable_cost_others_project = True
-
-            if 'others' not in self.project_list:
-                self.project_list.append('others')
         else:
             self.enable_cost_others_project = False
 
-            if 'others' in self.project_list:
-                self.project_list.remove('others')
+    def func_enable_cost_log_search(self, state):
+        """
+        Search feature usage information on license log file.
+        """
+        if state:
+            self.enable_cost_log_search = True
+        else:
+            self.enable_cost_log_search = False
 
     def show_version(self):
         """
         Show licenseMonitor version information.
         """
-        version = 'V1.3'
-        QMessageBox.about(self, 'licenseMonitor', 'Version: ' + str(version) + '        ')
+        QMessageBox.about(self, 'licenseMonitor', 'Version: ' + str(VERSION) + '        ')
 
     def show_about(self):
         """
@@ -639,6 +673,22 @@ licenseMonitor is an open source software for EDA software license information d
 """
 
         QMessageBox.about(self, 'licenseMonitor', about_message)
+
+    def set_common_checkbox_combo(self, checkbox_combo, item_list):
+        """
+        Set (initialize) combo item.
+        """
+        checkbox_combo.clear()
+
+        # Fill checkbox_combo.
+        for item in item_list:
+            checkbox_combo.addCheckBoxItem(item)
+
+        # Set "ALL" as checked status.
+        for (i, qBox) in enumerate(checkbox_combo.checkBoxList):
+            if (qBox.text() == 'ALL') and (qBox.isChecked() is False):
+                checkbox_combo.checkBoxList[i].setChecked(True)
+                break
 
 # For SERVER TAB (start) #
     def gen_server_tab(self):
@@ -679,10 +729,13 @@ licenseMonitor is an open source software for EDA software license information d
             if not license_dic[license_server]['vendor_daemon']:
                 license_dic[license_server]['vendor_daemon'].setdefault('', {'vendor_daemon_status': '', 'vendor_daemon_version': ''})
 
+        # Get license_server_list.
+        license_server_list = self.get_license_server_list()
+
         # Set self.server_tab_table.setRowCount
         row = 0
 
-        for license_server in license_dic.keys():
+        for license_server in license_server_list:
             for vendor_daemon in license_dic[license_server]['vendor_daemon'].keys():
                 row += 1
 
@@ -691,7 +744,7 @@ licenseMonitor is an open source software for EDA software license information d
         # Set item
         row = -1
 
-        for license_server in license_dic.keys():
+        for license_server in license_server_list:
             for vendor_daemon in license_dic[license_server]['vendor_daemon'].keys():
                 column = 0
                 row += 1
@@ -817,8 +870,7 @@ licenseMonitor is an open source software for EDA software license information d
             if 'license_files' in self.license_dic[server]:
                 lic_files = self.license_dic[server]['license_files']
 
-        self.license_log_tab = LicenseLogWindow(server=server, vendor=vendor, feature=feature, user=user, lic_files=lic_files)
-        self.license_log_tab.show()
+        self.my_show_license_log_file.run(server, vendor, feature, user, lic_files)
 
     def gen_feature_tab_frame(self):
         # Show
@@ -835,18 +887,16 @@ licenseMonitor is an open source software for EDA software license information d
         feature_tab_server_label.setStyleSheet('font-weight: bold;')
         feature_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.feature_tab_server_combo = QComboBox(self.feature_tab_frame)
+        self.feature_tab_server_combo = common_pyqt5.QComboCheckBox(self.feature_tab_frame)
         self.set_feature_tab_server_combo()
-        self.feature_tab_server_combo.activated.connect(self.feature_tab_server_combo_changed)
 
         # Vendor Daemon
         feature_tab_vendor_label = QLabel('Vendor', self.feature_tab_frame)
         feature_tab_vendor_label.setStyleSheet('font-weight: bold;')
         feature_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.feature_tab_vendor_combo = QComboBox(self.feature_tab_frame)
+        self.feature_tab_vendor_combo = common_pyqt5.QComboCheckBox(self.feature_tab_frame)
         self.set_feature_tab_vendor_combo()
-        self.feature_tab_vendor_combo.activated.connect(self.feature_tab_vendor_combo_changed)
 
         # License Feature
         feature_tab_feature_label = QLabel('Feature', self.feature_tab_frame)
@@ -873,7 +923,6 @@ licenseMonitor is an open source software for EDA software license information d
         feature_tab_frame_grid.addWidget(self.feature_tab_feature_line, 0, 7)
         feature_tab_frame_grid.addWidget(feature_tab_check_button, 0, 8)
 
-        feature_tab_frame_grid.setColumnStretch(0, 1)
         feature_tab_frame_grid.setColumnStretch(1, 1)
         feature_tab_frame_grid.setColumnStretch(2, 1)
         feature_tab_frame_grid.setColumnStretch(3, 1)
@@ -886,56 +935,52 @@ licenseMonitor is an open source software for EDA software license information d
         self.feature_tab_frame.setLayout(feature_tab_frame_grid)
 
     def set_feature_tab_show_combo(self):
+        """
+        Set (initialize) self.feature_tab_show_combo.
+        """
         self.feature_tab_show_combo.clear()
         self.feature_tab_show_combo.addItem('ALL')
         self.feature_tab_show_combo.addItem('IN_USE')
         self.feature_tab_show_combo.addItem('NOT_USED')
 
     def set_feature_tab_server_combo(self):
-        self.feature_tab_server_combo.clear()
-        self.feature_tab_server_combo.addItem('ALL')
+        """
+        Set (initialize) self.feature_tab_server_combo.
+        """
+        # Get license_server list.
+        license_server_list = self.get_license_server_list()
+        license_server_list.insert(0, 'ALL')
 
-        for license_server in self.license_dic.keys():
-            self.feature_tab_server_combo.addItem(license_server)
+        self.set_common_checkbox_combo(self.feature_tab_server_combo, license_server_list)
 
     def set_feature_tab_vendor_combo(self):
-        self.feature_tab_vendor_combo.clear()
-
+        """
+        Set (initialize) self.feature_tab_vendor_combo.
+        """
         # Get vendor_daemon list.
-        vendor_daemon_list = ['ALL', ]
-        selected_license_server = self.feature_tab_server_combo.currentText().strip()
+        vendor_daemon_list = self.get_vendor_daemon_list()
+        vendor_daemon_list.insert(0, 'ALL')
 
-        for license_server in self.license_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
-                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                    if vendor_daemon not in vendor_daemon_list:
-                        vendor_daemon_list.append(vendor_daemon)
-
-        # Fill self.feature_tab_vendor_combo.
-        for vendor_daemon in vendor_daemon_list:
-            self.feature_tab_vendor_combo.addItem(vendor_daemon)
-
-    def feature_tab_server_combo_changed(self):
-        self.set_feature_tab_vendor_combo()
-        self.filter_feature_tab_license_feature()
-
-    def feature_tab_vendor_combo_changed(self):
-        if self.feature_tab_vendor_combo.count() > 2:
-            self.filter_feature_tab_license_feature()
+        self.set_common_checkbox_combo(self.feature_tab_vendor_combo, vendor_daemon_list)
 
     def filter_feature_tab_license_feature(self, get_license_info=True):
+        """
+        Get license feature information based on self.feature_tab_show_combo/self.feature_tab_server_combo/self.feature_tab_vendor_combo/self.feature_tab_feature_line.
+        Generate self.feature_tab_table with filetered license feature information.
+        """
         # Re-generate self.feature_tab_table.
         if get_license_info:
             self.get_license_dic()
 
         if self.license_dic:
-            selected_license_server = self.feature_tab_server_combo.currentText().strip()
-            selected_vendor_daemon = self.feature_tab_vendor_combo.currentText().strip()
-            specified_license_feature_list = self.feature_tab_feature_line.text().strip().split()
             show_mode = self.feature_tab_show_combo.currentText().strip()
-
-            filter_license_dic = common_license.FilterLicenseDic()
-            filtered_license_dic = filter_license_dic.run(license_dic=self.license_dic, server_list=[selected_license_server, ], vendor_list=[selected_vendor_daemon, ], feature_list=specified_license_feature_list, show_mode=show_mode)
+            selected_license_server_dic = self.feature_tab_server_combo.selectedItems()
+            selected_license_server_list = list(selected_license_server_dic.values())
+            selected_vendor_daemon_dic = self.feature_tab_vendor_combo.selectedItems()
+            selected_vendor_daemon_list = list(selected_vendor_daemon_dic.values())
+            specified_license_feature_list = self.feature_tab_feature_line.text().strip().split()
+            my_filter_license = common_license.FilterLicenseDic()
+            filtered_license_dic = my_filter_license.run(license_dic=self.license_dic, server_list=selected_license_server_list, vendor_list=selected_vendor_daemon_list, feature_list=specified_license_feature_list, show_mode=show_mode)
 
             # Update self.feature_tab_table
             self.gen_feature_tab_table(filtered_license_dic)
@@ -1086,18 +1131,16 @@ licenseMonitor is an open source software for EDA software license information d
         expires_tab_server_label.setStyleSheet('font-weight: bold;')
         expires_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.expires_tab_server_combo = QComboBox(self.expires_tab_frame)
+        self.expires_tab_server_combo = common_pyqt5.QComboCheckBox(self.expires_tab_frame)
         self.set_expires_tab_server_combo()
-        self.expires_tab_server_combo.activated.connect(self.expires_tab_server_combo_changed)
 
         # License vendor daemon
         expires_tab_vendor_label = QLabel('Vendor', self.expires_tab_frame)
         expires_tab_vendor_label.setStyleSheet('font-weight: bold;')
         expires_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.expires_tab_vendor_combo = QComboBox(self.expires_tab_frame)
+        self.expires_tab_vendor_combo = common_pyqt5.QComboCheckBox(self.expires_tab_frame)
         self.set_expires_tab_vendor_combo()
-        self.expires_tab_vendor_combo.activated.connect(self.expires_tab_vendor_combo_changed)
 
         # License Feature
         expires_tab_feature_label = QLabel('Feature', self.expires_tab_frame)
@@ -1124,7 +1167,6 @@ licenseMonitor is an open source software for EDA software license information d
         expires_tab_frame_grid.addWidget(self.expires_tab_feature_line, 0, 7)
         expires_tab_frame_grid.addWidget(expires_tab_check_button, 0, 8)
 
-        expires_tab_frame_grid.setColumnStretch(0, 1)
         expires_tab_frame_grid.setColumnStretch(1, 1)
         expires_tab_frame_grid.setColumnStretch(2, 1)
         expires_tab_frame_grid.setColumnStretch(3, 1)
@@ -1137,6 +1179,9 @@ licenseMonitor is an open source software for EDA software license information d
         self.expires_tab_frame.setLayout(expires_tab_frame_grid)
 
     def set_expires_tab_show_combo(self):
+        """
+        Set (initialize) self.expires_tab_show_combo.
+        """
         self.expires_tab_show_combo.clear()
         self.expires_tab_show_combo.addItem('ALL')
         self.expires_tab_show_combo.addItem('Expired')
@@ -1144,53 +1189,102 @@ licenseMonitor is an open source software for EDA software license information d
         self.expires_tab_show_combo.addItem('Unexpired')
 
     def set_expires_tab_server_combo(self):
-        self.expires_tab_server_combo.clear()
-        self.expires_tab_server_combo.addItem('ALL')
+        """
+        Set (initialize) self.expires_tab_server_combo.
+        """
+        # Get license_server list.
+        license_server_list = self.get_license_server_list()
+        license_server_list.insert(0, 'ALL')
 
-        for license_server in self.license_dic.keys():
-            self.expires_tab_server_combo.addItem(license_server)
+        self.set_common_checkbox_combo(self.expires_tab_server_combo, license_server_list)
 
     def set_expires_tab_vendor_combo(self):
-        self.expires_tab_vendor_combo.clear()
-
+        """
+        Set (initialize) self.expires_tab_vendor_combo.
+        """
         # Get vendor_daemon list.
-        vendor_daemon_list = ['ALL', ]
-        selected_license_server = self.expires_tab_server_combo.currentText().strip()
+        vendor_daemon_list = self.get_vendor_daemon_list()
+        vendor_daemon_list.insert(0, 'ALL')
 
-        for license_server in self.license_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
-                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                    if vendor_daemon not in vendor_daemon_list:
-                        vendor_daemon_list.append(vendor_daemon)
-
-        # Fill self.expires_tab_vendor_combo.
-        for vendor_daemon in vendor_daemon_list:
-            self.expires_tab_vendor_combo.addItem(vendor_daemon)
-
-    def expires_tab_server_combo_changed(self):
-        self.set_expires_tab_vendor_combo()
-        self.filter_expires_tab_license_feature()
-
-    def expires_tab_vendor_combo_changed(self):
-        if self.expires_tab_vendor_combo.count() > 2:
-            self.filter_expires_tab_license_feature()
+        self.set_common_checkbox_combo(self.expires_tab_vendor_combo, vendor_daemon_list)
 
     def filter_expires_tab_license_feature(self, get_license_info=True):
+        """
+        Get license feature expires information based on self.expires_tab_show_combo/self.expires_tab_server_combo/self.expires_tab_vendor_combo/self.expires_tab_feature_line.
+        Generate self.expires_tab_table with filetered license feature information.
+        """
         # Re-generate self.expires_tab_table.
         if get_license_info:
             self.get_license_dic()
 
         if self.license_dic:
             selected_show_mode = self.expires_tab_show_combo.currentText().strip()
-            selected_license_server = self.expires_tab_server_combo.currentText().strip()
-            selected_vendor_daemon = self.expires_tab_vendor_combo.currentText().strip()
+            selected_license_server_dic = self.expires_tab_server_combo.selectedItems()
+            selected_license_server_list = list(selected_license_server_dic.values())
+            selected_vendor_daemon_dic = self.expires_tab_vendor_combo.selectedItems()
+            selected_vendor_daemon_list = list(selected_vendor_daemon_dic.values())
             specified_license_feature_list = self.expires_tab_feature_line.text().strip().split()
+            my_filter_license = common_license.FilterLicenseDic()
+            filtered_license_dic = my_filter_license.run(license_dic=self.license_dic, server_list=selected_license_server_list, vendor_list=selected_vendor_daemon_list, feature_list=specified_license_feature_list, show_mode=selected_show_mode)
 
-            filter_license_dic = common_license.FilterLicenseDic()
-            filtered_license_dic = filter_license_dic.run(license_dic=self.license_dic, server_list=[selected_license_server, ], vendor_list=[selected_vendor_daemon, ], feature_list=specified_license_feature_list, show_mode=selected_show_mode)
+            if (not filtered_license_dic) and specified_license_feature_list:
+                common.bprint('Searching expires info from license file ...', date_format='%Y-%m-%d %H:%M:%S')
+                my_show_message = ShowMessage('Info', 'Searching expires info from license file, please wait a moment ...')
+                my_show_message.start()
+                filtered_license_dic = self.search_expire_info_from_license_file(selected_show_mode, selected_license_server_list, selected_vendor_daemon_list, specified_license_feature_list)
+                my_show_message.terminate()
 
             # Update self.expires_tab_table
             self.gen_expires_tab_table(filtered_license_dic)
+
+    def search_expire_info_from_license_file(self, selected_show_mode, selected_license_server_list, selected_vendor_daemon_list, specified_license_feature_list):
+        """
+        Search license feature expires information from license file.
+        """
+        filtered_license_dic = {}
+        license_dic = {}
+
+        for license_server in self.license_dic.keys():
+            if ('ALL' in selected_license_server_list) or (license_server in selected_license_server_list):
+                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
+                    if ('ALL' in selected_vendor_daemon_list) or (vendor_daemon in selected_vendor_daemon_list):
+                        license_files = self.license_dic[license_server]['license_files']
+
+                        for license_file in license_files.split():
+                            for specified_feature in specified_license_feature_list:
+                                grep_command = 'grep \' ' + str(specified_feature) + ' \' ' + str(license_file)
+
+                                if os.path.exists(license_file):
+                                    (return_code, stdout, stderr) = common.run_command(grep_command)
+                                    stdout_list = str(stdout, 'utf-8').split('\n')
+                                else:
+                                    host_name = license_server.split('@')[1]
+                                    stdout_list = common.ssh_client(host_name=host_name, command=grep_command, timeout=1)
+
+                                for line in stdout_list:
+                                    if re.match(r'^\s*(FEATURE|INCREMENT)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+.*$', line):
+                                        my_match = re.match(r'^\s*(FEATURE|INCREMENT)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\d+)\s+.*$', line)
+                                        feature = my_match.group(2)
+                                        vendor = my_match.group(3)
+                                        version = my_match.group(4)
+                                        expire_info = my_match.group(5)
+                                        license_num = my_match.group(6)
+
+                                        if feature == specified_feature:
+                                            license_dic.setdefault(license_server, {'license_files': license_files, 'license_server_status': self.license_dic[license_server]['license_server_status'], 'license_server_version': self.license_dic[license_server]['license_server_version'], 'vendor_daemon': {}})
+                                            license_dic[license_server]['vendor_daemon'].setdefault(vendor_daemon, {'vendor_daemon_status': self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['vendor_daemon_status'], 'vendor_daemon_version': self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['vendor_daemon_version'], 'feature': {}, 'expires': {}})
+                                            license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'].setdefault(feature, {})
+                                            license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires'].setdefault(feature, [])
+                                            license_dic[license_server]['vendor_daemon'][vendor_daemon]['expires'][feature].append({'version': version, 'license': license_num, 'vendor': vendor, 'expires': expire_info})
+
+        if license_dic:
+            if selected_show_mode != 'ALL':
+                my_filter_license = common_license.FilterLicenseDic()
+                filtered_license_dic = my_filter_license.filter_show_mode_feature(license_dic, selected_show_mode)
+            else:
+                filtered_license_dic = license_dic
+
+        return filtered_license_dic
 
     def gen_expires_tab_table(self, license_dic):
         # Get license expires num.
@@ -1321,18 +1415,16 @@ licenseMonitor is an open source software for EDA software license information d
         usage_tab_server_label.setStyleSheet('font-weight: bold;')
         usage_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.usage_tab_server_combo = QComboBox(self.usage_tab_frame)
+        self.usage_tab_server_combo = common_pyqt5.QComboCheckBox(self.usage_tab_frame)
         self.set_usage_tab_server_combo()
-        self.usage_tab_server_combo.activated.connect(self.usage_tab_server_combo_changed)
 
         # License vendor daemon
         usage_tab_vendor_label = QLabel('Vendor', self.usage_tab_frame)
         usage_tab_vendor_label.setStyleSheet('font-weight: bold;')
         usage_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.usage_tab_vendor_combo = QComboBox(self.usage_tab_frame)
+        self.usage_tab_vendor_combo = common_pyqt5.QComboCheckBox(self.usage_tab_frame)
         self.set_usage_tab_vendor_combo()
-        self.usage_tab_vendor_combo.activated.connect(self.usage_tab_vendor_combo_changed)
 
         # License Feature
         usage_tab_feature_label = QLabel('Feature', self.usage_tab_frame)
@@ -1389,7 +1481,6 @@ licenseMonitor is an open source software for EDA software license information d
         usage_tab_frame_grid.addWidget(usage_tab_user_label, 1, 4)
         usage_tab_frame_grid.addWidget(self.usage_tab_user_line, 1, 5)
 
-        usage_tab_frame_grid.setColumnStretch(0, 1)
         usage_tab_frame_grid.setColumnStretch(1, 1)
         usage_tab_frame_grid.setColumnStretch(2, 1)
         usage_tab_frame_grid.setColumnStretch(3, 1)
@@ -1400,46 +1491,24 @@ licenseMonitor is an open source software for EDA software license information d
         self.usage_tab_frame.setLayout(usage_tab_frame_grid)
 
     def set_usage_tab_server_combo(self, license_server_list=[]):
-        self.usage_tab_server_combo.clear()
+        """
+        Set (initialize) self.usage_tab_server_combo.
+        """
+        # Get license_server list.
+        license_server_list = self.get_license_server_list()
+        license_server_list.insert(0, 'ALL')
 
-        if not license_server_list:
-            license_server_list.append('ALL')
-
-            for license_server in self.license_dic.keys():
-                license_server_list.append(license_server)
-
-        for license_server in license_server_list:
-            self.usage_tab_server_combo.addItem(license_server)
-
-    def usage_tab_server_combo_changed(self):
-        if self.usage_tab_server_combo.count() > 2:
-            self.set_usage_tab_vendor_combo()
-            self.set_usage_tab_submit_host_combo()
-            self.set_usage_tab_execute_host_combo()
-            self.filter_usage_tab_license_feature()
+        self.set_common_checkbox_combo(self.usage_tab_server_combo, license_server_list)
 
     def set_usage_tab_vendor_combo(self, vendor_daemon_list=[]):
-        self.usage_tab_vendor_combo.clear()
+        """
+        Set (initialize) self.usage_tab_vendor_combo.
+        """
+        # Get vendor_daemon list.
+        vendor_daemon_list = self.get_vendor_daemon_list()
+        vendor_daemon_list.insert(0, 'ALL')
 
-        if not vendor_daemon_list:
-            vendor_daemon_list = ['ALL', ]
-            selected_license_server = self.usage_tab_server_combo.currentText().strip()
-
-            for license_server in self.license_dic.keys():
-                if (selected_license_server == 'ALL') or (selected_license_server == license_server):
-                    for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                        if vendor_daemon not in vendor_daemon_list:
-                            vendor_daemon_list.append(vendor_daemon)
-
-        # Fill self.usage_tab_vendor_combo.
-        for vendor_daemon in vendor_daemon_list:
-            self.usage_tab_vendor_combo.addItem(vendor_daemon)
-
-    def usage_tab_vendor_combo_changed(self):
-        if self.usage_tab_vendor_combo.count() > 2:
-            self.set_usage_tab_submit_host_combo()
-            self.set_usage_tab_execute_host_combo()
-            self.filter_usage_tab_license_feature()
+        self.set_common_checkbox_combo(self.usage_tab_vendor_combo, vendor_daemon_list)
 
     def set_usage_tab_submit_host_combo(self):
         self.usage_tab_submit_host_combo.clear()
@@ -1484,20 +1553,26 @@ licenseMonitor is an open source software for EDA software license information d
             self.usage_tab_execute_host_combo.addItem(execute_host)
 
     def filter_usage_tab_license_feature(self, get_license_info=True):
+        """
+        Get license feature information based on self.usage_tab_server_combo/self.usage_tab_vendor_combo/self.usage_tab_feature_line/self.usage_tab_user_line.
+        Generate self.usage_tab_table with filetered license feature information.
+        """
         # Re-generate self.usage_tab_table.
         if get_license_info:
             self.get_license_dic()
 
         if self.license_dic:
-            selected_license_server = self.usage_tab_server_combo.currentText().strip()
-            selected_vendor_daemon = self.usage_tab_vendor_combo.currentText().strip()
+            show_mode = 'IN_USE'
+            selected_license_server_dic = self.usage_tab_server_combo.selectedItems()
+            selected_license_server_list = list(selected_license_server_dic.values())
+            selected_vendor_daemon_dic = self.usage_tab_vendor_combo.selectedItems()
+            selected_vendor_daemon_list = list(selected_vendor_daemon_dic.values())
             specified_license_feature_list = self.usage_tab_feature_line.text().strip().split()
             selected_submit_host = self.usage_tab_submit_host_combo.currentText().strip()
             selected_execute_host = self.usage_tab_execute_host_combo.currentText().strip()
             specified_user_list = self.usage_tab_user_line.text().strip().split()
-
             filter_license_dic = common_license.FilterLicenseDic()
-            filtered_license_dic = filter_license_dic.run(license_dic=self.license_dic, server_list=[selected_license_server, ], vendor_list=[selected_vendor_daemon, ], feature_list=specified_license_feature_list, submit_host_list=[selected_submit_host, ], execute_host_list=[selected_execute_host, ], user_list=specified_user_list, show_mode='IN_USE')
+            filtered_license_dic = filter_license_dic.run(license_dic=self.license_dic, server_list=selected_license_server_list, vendor_list=selected_vendor_daemon_list, feature_list=specified_license_feature_list, submit_host_list=[selected_submit_host, ], execute_host_list=[selected_execute_host, ], user_list=specified_user_list, show_mode=show_mode)
 
             # Update self.usage_tab_table
             self.gen_usage_tab_table(license_dic=filtered_license_dic)
@@ -1637,16 +1712,15 @@ licenseMonitor is an open source software for EDA software license information d
         curve_tab_server_label.setStyleSheet('font-weight: bold;')
         curve_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.curve_tab_server_combo = QComboBox(self.curve_tab_frame0)
+        self.curve_tab_server_combo = common_pyqt5.QComboCheckBox(self.curve_tab_frame0)
         self.set_curve_tab_server_combo()
-        self.curve_tab_server_combo.activated.connect(self.curve_tab_server_combo_changed)
 
         # License vendor daemon
         curve_tab_vendor_label = QLabel('Vendor', self.curve_tab_frame0)
         curve_tab_vendor_label.setStyleSheet('font-weight: bold;')
         curve_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.curve_tab_vendor_combo = QComboBox(self.curve_tab_frame0)
+        self.curve_tab_vendor_combo = common_pyqt5.QComboCheckBox(self.curve_tab_frame0)
         self.set_curve_tab_vendor_combo()
 
         # License Feature
@@ -1662,7 +1736,7 @@ licenseMonitor is an open source software for EDA software license information d
         curve_tab_check_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
         curve_tab_check_button.clicked.connect(self.filter_curve_tab)
 
-        # Begin_Data
+        # Begin_Date
         curve_tab_begin_date_label = QLabel('Begin_Date', self.curve_tab_frame0)
         curve_tab_begin_date_label.setStyleSheet("font-weight: bold;")
         curve_tab_begin_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -1670,11 +1744,10 @@ licenseMonitor is an open source software for EDA software license information d
         self.curve_tab_begin_date_edit = QDateEdit(self.curve_tab_frame0)
         self.curve_tab_begin_date_edit.setDisplayFormat('yyyy-MM-dd')
         self.curve_tab_begin_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
-        self.curve_tab_begin_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
         self.curve_tab_begin_date_edit.setCalendarPopup(True)
         self.curve_tab_begin_date_edit.setDate(QDate.currentDate().addDays(-7))
 
-        # End_Data
+        # End_Date
         curve_tab_end_date_label = QLabel('End_Date', self.curve_tab_frame0)
         curve_tab_end_date_label.setStyleSheet("font-weight: bold;")
         curve_tab_end_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -1682,7 +1755,6 @@ licenseMonitor is an open source software for EDA software license information d
         self.curve_tab_end_date_edit = QDateEdit(self.curve_tab_frame0)
         self.curve_tab_end_date_edit.setDisplayFormat('yyyy-MM-dd')
         self.curve_tab_end_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
-        self.curve_tab_end_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
         self.curve_tab_end_date_edit.setCalendarPopup(True)
         self.curve_tab_end_date_edit.setDate(QDate.currentDate())
 
@@ -1711,7 +1783,6 @@ licenseMonitor is an open source software for EDA software license information d
         curve_tab_frame0_grid.addWidget(curve_tab_empty_label, 1, 4, 1, 2)
         curve_tab_frame0_grid.addWidget(curve_tab_export_button, 1, 6)
 
-        curve_tab_frame0_grid.setColumnStretch(0, 1)
         curve_tab_frame0_grid.setColumnStretch(1, 1)
         curve_tab_frame0_grid.setColumnStretch(2, 1)
         curve_tab_frame0_grid.setColumnStretch(3, 1)
@@ -1725,39 +1796,21 @@ licenseMonitor is an open source software for EDA software license information d
         """
         Set (initialize) self.curve_tab_server_combo.
         """
-        self.curve_tab_server_combo.clear()
+        # Get license_server list.
+        license_server_list = self.get_license_server_list()
+        license_server_list.insert(0, 'ALL')
 
-        license_server_list = ['ALL', ]
-
-        for license_server in self.license_dic.keys():
-            license_server_list.append(license_server)
-
-        for license_server in license_server_list:
-            self.curve_tab_server_combo.addItem(license_server)
-
-    def curve_tab_server_combo_changed(self):
-        """
-        If self.curve_tab_server_combo is selected, update self.curve_tab_vendor_combo, then filter license feature on CURVE tab.
-        """
-        self.set_curve_tab_vendor_combo()
+        self.set_common_checkbox_combo(self.curve_tab_server_combo, license_server_list)
 
     def set_curve_tab_vendor_combo(self):
         """
         Set (initialize) self.curve_tab_vendor_combo.
         """
-        self.curve_tab_vendor_combo.clear()
+        # Get vendor_daemon list.
+        vendor_daemon_list = self.get_vendor_daemon_list()
+        vendor_daemon_list.insert(0, 'ALL')
 
-        vendor_daemon_list = ['ALL', ]
-        selected_license_server = self.curve_tab_server_combo.currentText().strip()
-
-        for license_server in self.license_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
-                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                    if vendor_daemon not in vendor_daemon_list:
-                        vendor_daemon_list.append(vendor_daemon)
-
-        for vendor_daemon in vendor_daemon_list:
-            self.curve_tab_vendor_combo.addItem(vendor_daemon)
+        self.set_common_checkbox_combo(self.curve_tab_vendor_combo, vendor_daemon_list)
 
     def filter_curve_tab(self):
         """
@@ -1768,21 +1821,59 @@ licenseMonitor is an open source software for EDA software license information d
         self.gen_curve_tab_table(curve_dic)
         self.update_curve_tab_frame1(curve_dic)
 
+    def update_db_info(self):
+        """
+        Get curve/utilization/usage database information.
+        """
+        common.bprint('Parse config.db_path', date_format='%Y-%m-%d %H:%M:%S')
+        self.db_dic = {}
+
+        if hasattr(config, 'db_path') and config.db_path and os.path.exists(config.db_path):
+            license_server_db_path = str(config.db_path) + '/license_server'
+
+            if not os.path.exists(license_server_db_path):
+                common.bprint('"' + str(license_server_db_path) + '": No such directory.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
+            else:
+                for license_server in os.listdir(license_server_db_path):
+                    license_server_path = str(license_server_db_path) + '/' + str(license_server)
+
+                    if re.match(r'^\d+@\S+$', license_server) and os.path.isdir(license_server_path):
+                        self.db_dic.setdefault(license_server, {})
+
+                        for vendor_daemon in os.listdir(license_server_path):
+                            vendor_daemon_path = str(license_server_path) + '/' + str(vendor_daemon)
+                            curve_db_path = str(vendor_daemon_path) + '/utilization.db'
+                            usage_db_path = str(vendor_daemon_path) + '/usage.db'
+
+                            if self.enable_utilization_detail:
+                                utilization_db_path = str(vendor_daemon_path) + '/utilization.db'
+                            else:
+                                utilization_db_path = str(vendor_daemon_path) + '/utilization_day.db'
+
+                            if os.path.isdir(vendor_daemon_path):
+                                self.db_dic[license_server].setdefault(vendor_daemon, {})
+
+                                if os.path.exists(curve_db_path):
+                                    self.db_dic[license_server][vendor_daemon].setdefault('curve', curve_db_path)
+
+                                if os.path.exists(usage_db_path):
+                                    self.db_dic[license_server][vendor_daemon].setdefault('usage', usage_db_path)
+
+                                if os.path.exists(utilization_db_path):
+                                    self.db_dic[license_server][vendor_daemon].setdefault('utilization', utilization_db_path)
+
     def get_curve_info(self):
         """
-        Get curve information from config.db_path/license_server/<license_server>/<vendor_deamon>/utilization.db.
+        Get curve information from config.db_path/license_server/<license_server>/<vendor_deamon>/usage.db.
         """
         # Print loading curve informaiton message.
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Loading curve info, please wait a moment ...')
+        common.bprint('Load curve info ...', date_format='%Y-%m-%d %H:%M:%S')
 
         # Print loading curve informaiton message with GUI.
         my_show_message = ShowMessage('Info', 'Loading curve info, please wait a moment ...')
         my_show_message.start()
 
         curve_dic = {}
-        fuzzy_curve_dic = {}
 
         key_list = ['sample_time', 'issued', 'in_use']
         begin_date = self.curve_tab_begin_date_edit.date().toString(Qt.ISODate)
@@ -1793,80 +1884,88 @@ licenseMonitor is an open source software for EDA software license information d
         end_second = time.mktime(time.strptime(end_time, '%Y-%m-%d %H:%M:%S'))
         select_condition = 'WHERE sample_second>=' + str(begin_second) + ' AND sample_second<=' + str(end_second)
 
-        selected_license_server = self.curve_tab_server_combo.currentText().strip()
-        selected_vendor_daemon = self.curve_tab_vendor_combo.currentText().strip()
+        selected_license_server_dic = self.curve_tab_server_combo.selectedItems()
+        selected_license_server_list = list(selected_license_server_dic.values())
+        selected_vendor_daemon_dic = self.curve_tab_vendor_combo.selectedItems()
+        selected_vendor_daemon_list = list(selected_vendor_daemon_dic.values())
         specified_license_feature = self.curve_tab_feature_line.text().strip()
+
+        self.update_db_info()
 
         # Filter with license_server/vendor_daemon/feature.
         for license_server in self.db_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
+            if ('ALL' in selected_license_server_list) or (license_server in selected_license_server_list):
                 for vendor_daemon in self.db_dic[license_server].keys():
-                    if (selected_vendor_daemon == 'ALL') or (selected_vendor_daemon == vendor_daemon):
+                    if ('ALL' in selected_vendor_daemon_list) or (vendor_daemon in selected_vendor_daemon_list):
                         if 'curve' in self.db_dic[license_server][vendor_daemon].keys():
                             curve_db_file = self.db_dic[license_server][vendor_daemon]['curve']
                             (curve_db_file_connect_result, curve_db_conn) = common_sqlite3.connect_db_file(curve_db_file)
 
                             if curve_db_file_connect_result == 'failed':
-                                common.print_warning('*Warning*: Failed on connecting curve database file "' + str(curve_db_file) + '".')
+                                common.bprint('Failed on connecting curve database file "' + str(curve_db_file) + '".', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
                             else:
+                                # Get specified_license_feature_list.
                                 curve_db_table_list = common_sqlite3.get_sql_table_list(curve_db_file, curve_db_conn)
 
-                                for feature in curve_db_table_list:
-                                    # Check fuzzy_mode.
-                                    fuzzy_mode = False
+                                if 'sqlite_sequence' in curve_db_table_list:
+                                    curve_db_table_list.remove('sqlite_sequence')
 
-                                    if (feature != specified_license_feature) and re.search(re.escape(specified_license_feature.lower()), feature.lower()):
-                                        fuzzy_mode = True
+                                specified_license_feature_list = []
 
-                                    # feature match or fuzzy_mode.
-                                    if (not specified_license_feature) or (feature == specified_license_feature) or fuzzy_mode:
-                                        data_dic = common_sqlite3.get_sql_table_data(curve_db_file, curve_db_conn, feature, key_list, select_condition)
+                                if not specified_license_feature:
+                                    specified_license_feature_list = curve_db_table_list
+                                else:
+                                    if specified_license_feature in curve_db_table_list:
+                                        specified_license_feature_list.append(specified_license_feature)
+                                    else:
+                                        for feature in curve_db_table_list:
+                                            if re.search(re.escape(specified_license_feature.lower()), feature.lower()):
+                                                specified_license_feature_list.append(feature)
 
-                                        if data_dic:
-                                            if fuzzy_mode:
-                                                fuzzy_curve_dic.setdefault(feature, {})
-                                                fuzzy_curve_dic[feature].setdefault(vendor_daemon, {})
+                                # Get specified feature data.
+                                for feature in specified_license_feature_list:
+                                    data_dic = common_sqlite3.get_sql_table_data(curve_db_file, curve_db_conn, feature, key_list, select_condition)
+
+                                    if data_dic:
+                                        curve_dic.setdefault(feature, {})
+                                        curve_dic[feature].setdefault(vendor_daemon, {'sample_data': {}, 'summary': {}})
+                                        issued_list = []
+                                        in_use_list = []
+
+                                        # Get sample data.
+                                        for (i, sample_time) in enumerate(data_dic['sample_time']):
+                                            curve_dic[feature][vendor_daemon]['sample_data'].setdefault(sample_time, {'issued': 0.0, 'in_use': 0.0})
+                                            issued_num = data_dic['issued'][i]
+                                            in_use_num = data_dic['in_use'][i]
+
+                                            if issued_num == 'Uncounted':
+                                                curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['issued'] = 'Uncounted'
                                             else:
-                                                curve_dic.setdefault(feature, {})
-                                                curve_dic[feature].setdefault(vendor_daemon, {})
+                                                if curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['issued'] != 'Uncounted':
+                                                    curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['issued'] += float(issued_num)
 
-                                            for (i, sample_time) in enumerate(data_dic['sample_time']):
-                                                issued_num = data_dic['issued'][i]
-                                                in_use_num = data_dic['in_use'][i]
+                                            curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['in_use'] += float(in_use_num)
 
-                                                if fuzzy_mode:
-                                                    fuzzy_curve_dic[feature][vendor_daemon].setdefault(sample_time, {'issued': 0.0, 'in_use': 0.0})
-                                                else:
-                                                    curve_dic[feature][vendor_daemon].setdefault(sample_time, {'issued': 0.0, 'in_use': 0.0})
+                                            # Collect summary information.
+                                            issued_list.append(curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['issued'])
+                                            in_use_list.append(curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['in_use'])
 
-                                                if issued_num == 'Uncounted':
-                                                    if fuzzy_mode:
-                                                        fuzzy_curve_dic[feature][vendor_daemon][sample_time]['issued'] = 'Uncounted'
-                                                    else:
-                                                        curve_dic[feature][vendor_daemon][sample_time]['issued'] = 'Uncounted'
-                                                else:
-                                                    if fuzzy_mode:
-                                                        if fuzzy_curve_dic[feature][vendor_daemon][sample_time]['issued'] != 'Uncounted':
-                                                            fuzzy_curve_dic[feature][vendor_daemon][sample_time]['issued'] += float(issued_num)
-                                                    else:
-                                                        if curve_dic[feature][vendor_daemon][sample_time]['issued'] != 'Uncounted':
-                                                            curve_dic[feature][vendor_daemon][sample_time]['issued'] += float(issued_num)
+                                        # Get summary data.
+                                        if 'Uncounted' in issued_list:
+                                            avg_issued = 'Uncounted'
+                                        else:
+                                            avg_issued = round(sum(issued_list)/len(issued_list), 1)
 
-                                                if fuzzy_mode:
-                                                    fuzzy_curve_dic[feature][vendor_daemon][sample_time]['in_use'] += float(in_use_num)
-                                                else:
-                                                    curve_dic[feature][vendor_daemon][sample_time]['in_use'] += float(in_use_num)
+                                        avg_in_use = round(sum(in_use_list)/len(in_use_list), 1)
+                                        peak_in_use = max(in_use_list)
+                                        curve_dic[feature][vendor_daemon]['summary'] = {'avg_issued': avg_issued, 'avg_in_use': avg_in_use, 'peak_in_use': peak_in_use}
 
-                                curve_db_conn.close()
-
-        # Filter with feature on fuzzy mode.
-        if (not curve_dic) and fuzzy_curve_dic:
-            curve_dic = fuzzy_curve_dic
+                            curve_db_conn.close()
 
         my_show_message.terminate()
 
         if not curve_dic:
-            common.print_warning('*Warning*: No curve data is find.')
+            common.bprint('No curve data is find.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
 
         return curve_dic
 
@@ -1903,23 +2002,9 @@ licenseMonitor is an open source software for EDA software license information d
 
             for feature in curve_dic.keys():
                 for vendor_daemon in curve_dic[feature].keys():
-                    issued_list = []
-                    in_use_list = []
-
-                    for sample_time in curve_dic[feature][vendor_daemon].keys():
-                        issued_num = curve_dic[feature][vendor_daemon][sample_time]['issued']
-                        in_use_num = curve_dic[feature][vendor_daemon][sample_time]['in_use']
-
-                        issued_list.append(issued_num)
-                        in_use_list.append(in_use_num)
-
-                    if 'Uncounted' in issued_list:
-                        avg_issued = 'Uncounted'
-                    else:
-                        avg_issued = round(sum(issued_list)/len(issued_list), 1)
-
-                    avg_in_use = round(sum(in_use_list)/len(in_use_list), 1)
-                    peak_in_use = max(in_use_list)
+                    avg_issued = curve_dic[feature][vendor_daemon]['summary']['avg_issued']
+                    avg_in_use = curve_dic[feature][vendor_daemon]['summary']['avg_in_use']
+                    peak_in_use = curve_dic[feature][vendor_daemon]['summary']['peak_in_use']
 
                     i += 1
 
@@ -1955,6 +2040,8 @@ licenseMonitor is an open source software for EDA software license information d
                 current_row = self.curve_tab_table.currentRow()
                 feature = self.curve_tab_table.item(current_row, 0).text().strip()
 
+                self.set_feature_tab_server_combo()
+                self.set_feature_tab_vendor_combo()
                 self.feature_tab_feature_line.setText(feature)
                 self.filter_feature_tab_license_feature(get_license_info=False)
                 self.main_tab.setCurrentWidget(self.feature_tab)
@@ -1985,19 +2072,16 @@ licenseMonitor is an open source software for EDA software license information d
         specified_license_feature = self.curve_tab_feature_line.text().strip()
 
         if not specified_license_feature:
-            common.print_warning('*Warning*: No feature is specified, will not generate curve.')
             return
         elif specified_license_feature not in curve_dic:
-            common.print_warning('*Warning*: No valid feature is specified, will not generate curve.')
+            common.bprint('No valid feature is specified, will not generate curve.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
             return
 
         # Print loading cost informaiton message.
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Process curve info, please wait a moment ...')
+        common.bprint('Processing curve info ...', date_format='%Y-%m-%d %H:%M:%S')
 
         # Print loading cost informaiton message with GUI.
-        my_show_message = ShowMessage('Info', 'Process curve info, please wait a moment ...')
+        my_show_message = ShowMessage('Info', 'Processing curve info, please wait a moment ...')
         my_show_message.start()
 
         # Get sample_time_list.
@@ -2005,7 +2089,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         for feature in curve_dic.keys():
             for vendor_daemon in curve_dic[feature].keys():
-                sample_time_list.extend(list(curve_dic[feature][vendor_daemon].keys()))
+                sample_time_list.extend(list(curve_dic[feature][vendor_daemon]['sample_data'].keys()))
 
         sample_time_list = list(set(sample_time_list))
         sample_time_list.sort()
@@ -2017,9 +2101,9 @@ licenseMonitor is an open source software for EDA software license information d
         for sample_time in sample_time_list:
             for feature in curve_dic.keys():
                 for vendor_daemon in curve_dic[feature].keys():
-                    if sample_time in curve_dic[feature][vendor_daemon].keys():
-                        issued_num = curve_dic[feature][vendor_daemon][sample_time]['issued']
-                        in_use_num = curve_dic[feature][vendor_daemon][sample_time]['in_use']
+                    if sample_time in curve_dic[feature][vendor_daemon]['sample_data'].keys():
+                        issued_num = curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['issued']
+                        in_use_num = curve_dic[feature][vendor_daemon]['sample_data'][sample_time]['in_use']
 
                         if issued_num == 'Uncounted':
                             issued_num = 0
@@ -2099,16 +2183,15 @@ licenseMonitor is an open source software for EDA software license information d
         utilization_tab_server_label.setStyleSheet('font-weight: bold;')
         utilization_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.utilization_tab_server_combo = QComboBox(self.utilization_tab_frame0)
+        self.utilization_tab_server_combo = common_pyqt5.QComboCheckBox(self.utilization_tab_frame0)
         self.set_utilization_tab_server_combo()
-        self.utilization_tab_server_combo.activated.connect(self.utilization_tab_server_combo_changed)
 
         # License vendor daemon
         utilization_tab_vendor_label = QLabel('Vendor', self.utilization_tab_frame0)
         utilization_tab_vendor_label.setStyleSheet('font-weight: bold;')
         utilization_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.utilization_tab_vendor_combo = QComboBox(self.utilization_tab_frame0)
+        self.utilization_tab_vendor_combo = common_pyqt5.QComboCheckBox(self.utilization_tab_frame0)
         self.set_utilization_tab_vendor_combo()
 
         # License Feature
@@ -2124,7 +2207,7 @@ licenseMonitor is an open source software for EDA software license information d
         utilization_tab_check_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
         utilization_tab_check_button.clicked.connect(self.filter_utilization_tab)
 
-        # Begin_Data
+        # Begin_Date
         utilization_tab_begin_date_label = QLabel('Begin_Date', self.utilization_tab_frame0)
         utilization_tab_begin_date_label.setStyleSheet("font-weight: bold;")
         utilization_tab_begin_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -2132,11 +2215,10 @@ licenseMonitor is an open source software for EDA software license information d
         self.utilization_tab_begin_date_edit = QDateEdit(self.utilization_tab_frame0)
         self.utilization_tab_begin_date_edit.setDisplayFormat('yyyy-MM-dd')
         self.utilization_tab_begin_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
-        self.utilization_tab_begin_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
         self.utilization_tab_begin_date_edit.setCalendarPopup(True)
         self.utilization_tab_begin_date_edit.setDate(QDate.currentDate().addMonths(-1))
 
-        # End_Data
+        # End_Date
         utilization_tab_end_date_label = QLabel('End_Date', self.utilization_tab_frame0)
         utilization_tab_end_date_label.setStyleSheet("font-weight: bold;")
         utilization_tab_end_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -2144,7 +2226,6 @@ licenseMonitor is an open source software for EDA software license information d
         self.utilization_tab_end_date_edit = QDateEdit(self.utilization_tab_frame0)
         self.utilization_tab_end_date_edit.setDisplayFormat('yyyy-MM-dd')
         self.utilization_tab_end_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
-        self.utilization_tab_end_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
         self.utilization_tab_end_date_edit.setCalendarPopup(True)
         self.utilization_tab_end_date_edit.setDate(QDate.currentDate())
 
@@ -2179,7 +2260,6 @@ licenseMonitor is an open source software for EDA software license information d
         utilization_tab_frame0_grid.addWidget(self.utilization_tab_product_line, 1, 5)
         utilization_tab_frame0_grid.addWidget(utilization_tab_export_button, 1, 6)
 
-        utilization_tab_frame0_grid.setColumnStretch(0, 1)
         utilization_tab_frame0_grid.setColumnStretch(1, 1)
         utilization_tab_frame0_grid.setColumnStretch(2, 1)
         utilization_tab_frame0_grid.setColumnStretch(3, 1)
@@ -2193,39 +2273,21 @@ licenseMonitor is an open source software for EDA software license information d
         """
         Set (initialize) self.utilization_tab_server_combo.
         """
-        self.utilization_tab_server_combo.clear()
+        # Get license_server list.
+        license_server_list = self.get_license_server_list()
+        license_server_list.insert(0, 'ALL')
 
-        license_server_list = ['ALL', ]
-
-        for license_server in self.license_dic.keys():
-            license_server_list.append(license_server)
-
-        for license_server in license_server_list:
-            self.utilization_tab_server_combo.addItem(license_server)
-
-    def utilization_tab_server_combo_changed(self):
-        """
-        If self.utilization_tab_server_combo is selected, update self.utilization_tab_vendor_combo, then filter license feature on UTILIAZTION tab.
-        """
-        self.set_utilization_tab_vendor_combo()
+        self.set_common_checkbox_combo(self.utilization_tab_server_combo, license_server_list)
 
     def set_utilization_tab_vendor_combo(self):
         """
         Set (initialize) self.utilization_tab_vendor_combo.
         """
-        self.utilization_tab_vendor_combo.clear()
+        # Get vendor_daemon list.
+        vendor_daemon_list = self.get_vendor_daemon_list()
+        vendor_daemon_list.insert(0, 'ALL')
 
-        vendor_daemon_list = ['ALL', ]
-        selected_license_server = self.utilization_tab_server_combo.currentText().strip()
-
-        for license_server in self.license_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
-                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                    if vendor_daemon not in vendor_daemon_list:
-                        vendor_daemon_list.append(vendor_daemon)
-
-        for vendor_daemon in vendor_daemon_list:
-            self.utilization_tab_vendor_combo.addItem(vendor_daemon)
+        self.set_common_checkbox_combo(self.utilization_tab_vendor_combo, vendor_daemon_list)
 
     def filter_utilization_tab(self):
         """
@@ -2240,21 +2302,32 @@ licenseMonitor is an open source software for EDA software license information d
             self.gen_utilization_tab_table(utilization_dic)
             self.update_utilization_tab_frame1(utilization_dic)
 
+    def update_feature_record_info(self):
+        """
+        Update self.feature_record_dic with config/others/feature_record_on_license_log.yaml.
+        """
+        # Get self.feature_record_dic.
+        self.feature_record_dic = {}
+        feature_record_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/others/feature_record_on_license_log.yaml'
+
+        if os.path.exists(feature_record_file):
+            common.bprint('Parse config/others/feature_record_on_license_log.yaml', date_format='%Y-%m-%d %H:%M:%S')
+
+            with open(feature_record_file, 'r') as FRF:
+                self.feature_record_dic = yaml.load(FRF, Loader=yaml.FullLoader)
+
     def get_utilization_info(self):
         """
         Get utilization information from config.db_path/license_server/<license_server>/<vendor_deamon>/utilization(_day).db.
         """
         # Print loading utilization informaiton message.
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Loading utilization info, please wait a moment ...')
+        common.bprint('Load utilization info ...', date_format='%Y-%m-%d %H:%M:%S')
 
         # Print loading utilization informaiton message with GUI.
         my_show_message = ShowMessage('Info', 'Loading utilization info, please wait a moment ...')
         my_show_message.start()
 
         utilization_dic = {}
-        fuzzy_utilization_dic = {}
 
         if self.enable_utilization_detail:
             key_list = ['sample_time', 'issued', 'in_use']
@@ -2273,105 +2346,90 @@ licenseMonitor is an open source software for EDA software license information d
             end_date = re.sub('-', '', end_date)
             select_condition = 'WHERE sample_date>=' + str(begin_date) + ' AND sample_date<=' + str(end_date)
 
-        selected_license_server = self.utilization_tab_server_combo.currentText().strip()
-        selected_vendor_daemon = self.utilization_tab_vendor_combo.currentText().strip()
-        specified_license_feature_list = self.utilization_tab_feature_line.text().strip().split()
+        selected_license_server_dic = self.utilization_tab_server_combo.selectedItems()
+        selected_license_server_list = list(selected_license_server_dic.values())
+        selected_vendor_daemon_dic = self.utilization_tab_vendor_combo.selectedItems()
+        selected_vendor_daemon_list = list(selected_vendor_daemon_dic.values())
+        selected_license_feature_list = self.utilization_tab_feature_line.text().strip().split()
+        selected_license_product = self.utilization_tab_product_line.text().strip()
+
+        self.update_db_info()
+        self.update_product_feature_info()
+        self.update_feature_record_info()
 
         # Filter with license_server/vendor_daemon/feature.
         for license_server in self.db_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
+            if ('ALL' in selected_license_server_list) or (license_server in selected_license_server_list):
                 for vendor_daemon in self.db_dic[license_server].keys():
-                    if (selected_vendor_daemon == 'ALL') or (selected_vendor_daemon == vendor_daemon):
+                    if ('ALL' in selected_vendor_daemon_list) or (vendor_daemon in selected_vendor_daemon_list):
                         if 'utilization' in self.db_dic[license_server][vendor_daemon].keys():
                             utilization_db_file = self.db_dic[license_server][vendor_daemon]['utilization']
                             (utilization_db_file_connect_result, utilization_db_conn) = common_sqlite3.connect_db_file(utilization_db_file)
 
                             if utilization_db_file_connect_result == 'failed':
-                                common.print_warning('*Warning*: Failed on connecting utilization database file "' + str(utilization_db_file) + '".')
+                                common.bprint('Failed on connecting utilization database file "' + str(utilization_db_file) + '".', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
                             else:
+                                # Get specified_license_feature_list.
                                 utilization_db_table_list = common_sqlite3.get_sql_table_list(utilization_db_file, utilization_db_conn)
+                                specified_license_feature_list = self.count_specified_license_feature_list(utilization_db_table_list, vendor_daemon, selected_license_feature_list, selected_license_product)
 
-                                for feature in utilization_db_table_list:
-                                    # Check fuzzy_mode.
-                                    fuzzy_mode = False
+                                # Get specified feature data.
+                                for feature in specified_license_feature_list:
+                                    data_dic = common_sqlite3.get_sql_table_data(utilization_db_file, utilization_db_conn, feature, key_list, select_condition)
 
-                                    for specified_license_feature in specified_license_feature_list:
-                                        if (feature != specified_license_feature) and re.search(re.escape(specified_license_feature.lower()), feature.lower()):
-                                            fuzzy_mode = True
-                                            break
+                                    if data_dic:
+                                        # Save sample data.
+                                        utilization_dic.setdefault(feature, {})
+                                        utilization_dic[feature].setdefault(vendor_daemon, {'sample_data': {}, 'summary': {}})
 
-                                    # feature match or fuzzy_mode.
-                                    if (not specified_license_feature_list) or (feature in specified_license_feature_list) or fuzzy_mode:
-                                        data_dic = common_sqlite3.get_sql_table_data(utilization_db_file, utilization_db_conn, feature, key_list, select_condition)
+                                        if self.enable_utilization_detail:
+                                            key = 'sample_time'
+                                        else:
+                                            key = 'sample_date'
 
-                                        if data_dic:
-                                            if fuzzy_mode:
-                                                fuzzy_utilization_dic.setdefault(feature, {})
-                                                fuzzy_utilization_dic[feature].setdefault(vendor_daemon, {})
+                                        for (i, sample_date) in enumerate(data_dic[key]):
+                                            utilization_dic[feature][vendor_daemon]['sample_data'].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0})
+                                            issued_num = data_dic['issued'][i]
+                                            in_use_num = data_dic['in_use'][i]
+
+                                            if issued_num == 'Uncounted':
+                                                utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['issued'] = 'Uncounted'
                                             else:
-                                                utilization_dic.setdefault(feature, {})
-                                                utilization_dic[feature].setdefault(vendor_daemon, {})
+                                                if utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['issued'] != 'Uncounted':
+                                                    utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['issued'] += float(issued_num)
 
-                                            if self.enable_utilization_detail:
-                                                key = 'sample_time'
-                                            else:
-                                                key = 'sample_date'
+                                            utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['in_use'] += float(in_use_num)
 
-                                            for (i, sample_date) in enumerate(data_dic[key]):
-                                                issued_num = data_dic['issued'][i]
-                                                in_use_num = data_dic['in_use'][i]
-
-                                                if fuzzy_mode:
-                                                    fuzzy_utilization_dic[feature][vendor_daemon].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0})
-                                                else:
-                                                    utilization_dic[feature][vendor_daemon].setdefault(sample_date, {'issued': 0.0, 'in_use': 0.0})
-
-                                                if issued_num == 'Uncounted':
-                                                    if fuzzy_mode:
-                                                        fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] = 'Uncounted'
-                                                    else:
-                                                        utilization_dic[feature][vendor_daemon][sample_date]['issued'] = 'Uncounted'
-                                                else:
-                                                    if fuzzy_mode:
-                                                        if fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] != 'Uncounted':
-                                                            fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['issued'] += float(issued_num)
-                                                    else:
-                                                        if utilization_dic[feature][vendor_daemon][sample_date]['issued'] != 'Uncounted':
-                                                            utilization_dic[feature][vendor_daemon][sample_date]['issued'] += float(issued_num)
-
-                                                if fuzzy_mode:
-                                                    fuzzy_utilization_dic[feature][vendor_daemon][sample_date]['in_use'] += float(in_use_num)
-                                                else:
-                                                    utilization_dic[feature][vendor_daemon][sample_date]['in_use'] += float(in_use_num)
-
-                                utilization_db_conn.close()
-
-        # Filter with feature on fuzzy mode.
-        if (not utilization_dic) and fuzzy_utilization_dic:
-            utilization_dic = fuzzy_utilization_dic
+                            utilization_db_conn.close()
 
         # Filter with white/black feature list.
+        utilization_white_feature_list = self.parse_feature_product_filter_file('utilization', 'white', 'feature')
+        utilization_black_feature_list = self.parse_feature_product_filter_file('utilization', 'black', 'feature')
         filtered_utilization_dic = copy.deepcopy(utilization_dic)
 
-        if self.utilization_white_feature_list:
+        if utilization_white_feature_list:
             filtered_utilization_dic = {}
 
-            for white_feature in self.utilization_white_feature_list:
+            for white_feature in utilization_white_feature_list:
                 for feature in utilization_dic.keys():
                     if re.match(white_feature, feature):
                         filtered_utilization_dic[feature] = utilization_dic[feature]
-        elif self.utilization_black_feature_list:
-            for black_feature in self.utilization_black_feature_list:
+        elif utilization_black_feature_list:
+            for black_feature in utilization_black_feature_list:
                 for feature in utilization_dic.keys():
                     if re.match(black_feature, feature):
                         del filtered_utilization_dic[feature]
 
-        # Count utilizaton information.
+        # Count utilizaton/avg_utilization information. (Aggregated data from different license servers)
         for feature in filtered_utilization_dic.keys():
             for vendor_daemon in filtered_utilization_dic[feature].keys():
-                for sample_date in filtered_utilization_dic[feature][vendor_daemon].keys():
-                    issued_num = filtered_utilization_dic[feature][vendor_daemon][sample_date]['issued']
-                    in_use_num = filtered_utilization_dic[feature][vendor_daemon][sample_date]['in_use']
+                issued_list = []
+                in_use_list = []
+
+                for sample_date in filtered_utilization_dic[feature][vendor_daemon]['sample_data'].keys():
+                    # Get feature sample_date 'utilization' info.
+                    issued_num = filtered_utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['issued']
+                    in_use_num = filtered_utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['in_use']
                     utilization = 0.0
 
                     if issued_num == 'Uncounted':
@@ -2382,14 +2440,68 @@ licenseMonitor is an open source software for EDA software license information d
                     else:
                         utilization = round(100 * in_use_num / issued_num, 1)
 
-                    filtered_utilization_dic[feature][vendor_daemon][sample_date]['utilization'] = utilization
+                    filtered_utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['utilization'] = utilization
+
+                    issued_list.append(issued_num)
+                    in_use_list.append(in_use_num)
+
+                # Get feature 'avg_utilization' info.
+                if 'Uncounted' in issued_list:
+                    if sum(in_use_list) > 0:
+                        avg_utilization = 100.0
+                    else:
+                        avg_utilization = 0.0
+                else:
+                    avg_utilization = round(100 * sum(in_use_list) / sum(issued_list), 1)
+
+                filtered_utilization_dic[feature][vendor_daemon]['summary'] = {'avg_utilization': avg_utilization}
+
+        # If avg_utilization == 0.0, try to get feature checkout record from license log.
+        if self.enable_utilization_log_search and self.feature_record_dic:
+            for feature in filtered_utilization_dic.keys():
+                for vendor_daemon in filtered_utilization_dic[feature].keys():
+                    if (filtered_utilization_dic[feature][vendor_daemon]['summary']['avg_utilization'] == 0.0) and (feature in self.feature_record_dic) and (vendor_daemon in self.feature_record_dic[feature]):
+                        filtered_utilization_dic[feature][vendor_daemon]['summary']['avg_utilization'] = 0.09
 
         my_show_message.terminate()
 
         if not filtered_utilization_dic:
-            common.print_warning('*Warning*: No utilization data is find.')
+            common.bprint('No utilization data is find.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
 
         return filtered_utilization_dic
+
+    def count_specified_license_feature_list(self, feature_list, vendor_daemon, selected_license_feature_list=[], selected_license_product=''):
+        """
+        Based on selected_license_feature_list and selected_license_product, count specified_license_feature_list.
+        """
+        specified_license_feature_list = []
+
+        if 'sqlite_sequence' in feature_list:
+            feature_list.remove('sqlite_sequence')
+
+        if (not selected_license_feature_list) and (not selected_license_product):
+            specified_license_feature_list = feature_list
+        else:
+            if selected_license_feature_list:
+                # Exact match or fuzzy match for specified_license_feature_list.
+                for selected_license_feature in selected_license_feature_list:
+                    if selected_license_feature in feature_list:
+                        specified_license_feature_list.append(selected_license_feature)
+                    else:
+                        for feature in feature_list:
+                            if re.search(re.escape(selected_license_feature.lower()), feature.lower()):
+                                specified_license_feature_list.append(feature)
+            elif selected_license_product:
+                # If not specified "selected_license_feature_list", try to get "selected_license_feature_list" from "selected_license_product".
+                if vendor_daemon in self.product_feature_dic:
+                    if selected_license_product in self.product_feature_dic[vendor_daemon]:
+                        selected_license_feature_list.extend(self.product_feature_dic[vendor_daemon][selected_license_product])
+                    else:
+                        for product in self.product_feature_dic[vendor_daemon].keys():
+                            if re.search(re.escape(selected_license_product.lower()), product.lower()):
+                                selected_license_feature_list.extend(self.product_feature_dic[vendor_daemon][product])
+
+        return specified_license_feature_list
 
     def gen_utilization_tab_table(self, utilization_dic={}):
         """
@@ -2426,29 +2538,7 @@ licenseMonitor is an open source software for EDA software license information d
 
             for feature in utilization_dic.keys():
                 for vendor_daemon in utilization_dic[feature].keys():
-                    if self.enable_utilization_product:
-                        utilization_list = []
-
-                        for sample_date in utilization_dic[feature][vendor_daemon].keys():
-                            utilization_list.append(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
-
-                        avg_utilization = round(sum(utilization_list) / len(utilization_list), 1)
-                    else:
-                        issued_list = []
-                        in_use_list = []
-
-                        for sample_date in utilization_dic[feature][vendor_daemon].keys():
-                            issued_list.append(utilization_dic[feature][vendor_daemon][sample_date]['issued'])
-                            in_use_list.append(utilization_dic[feature][vendor_daemon][sample_date]['in_use'])
-
-                        if 'Uncounted' in issued_list:
-                            if sum(in_use_list) > 0:
-                                avg_utilization = 100.0
-                            else:
-                                avg_utilization = 0.0
-                        else:
-                            avg_utilization = round(100 * sum(in_use_list) / sum(issued_list), 1)
-
+                    avg_utilization = utilization_dic[feature][vendor_daemon]['summary']['avg_utilization']
                     i += 1
 
                     # Fill "feature" item.
@@ -2479,6 +2569,8 @@ licenseMonitor is an open source software for EDA software license information d
                 current_row = self.utilization_tab_table.currentRow()
                 feature = self.utilization_tab_table.item(current_row, 0).text().strip()
 
+                self.set_feature_tab_server_combo()
+                self.set_feature_tab_vendor_combo()
                 self.feature_tab_feature_line.setText(feature)
                 self.filter_feature_tab_license_feature(get_license_info=False)
                 self.main_tab.setCurrentWidget(self.feature_tab)
@@ -2507,9 +2599,7 @@ licenseMonitor is an open source software for EDA software license information d
         self.utilization_tab_canvas.draw()
 
         # Print loading cost informaiton message.
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Process utilization info, please wait a moment ...')
+        common.bprint('Process utilization info ...', date_format='%Y-%m-%d %H:%M:%S')
 
         # Print loading cost informaiton message with GUI.
         my_show_message = ShowMessage('Info', 'Process utilization info, please wait a moment ...')
@@ -2520,7 +2610,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         for feature in utilization_dic.keys():
             for vendor_daemon in utilization_dic[feature].keys():
-                sample_date_list.extend(list(utilization_dic[feature][vendor_daemon].keys()))
+                sample_date_list.extend(list(utilization_dic[feature][vendor_daemon]['sample_data'].keys()))
 
         sample_date_list = list(set(sample_date_list))
         sample_date_list.sort()
@@ -2533,8 +2623,8 @@ licenseMonitor is an open source software for EDA software license information d
 
             for feature in utilization_dic.keys():
                 for vendor_daemon in utilization_dic[feature].keys():
-                    if sample_date in utilization_dic[feature][vendor_daemon].keys():
-                        sample_date_utilization_list.append(utilization_dic[feature][vendor_daemon][sample_date]['utilization'])
+                    if sample_date in utilization_dic[feature][vendor_daemon]['sample_data'].keys():
+                        sample_date_utilization_list.append(utilization_dic[feature][vendor_daemon]['sample_data'][sample_date]['utilization'])
 
             avg_sample_date_utilzation = round(sum(sample_date_utilization_list) / len(sample_date_utilization_list), 1)
             utilization_list.append(avg_sample_date_utilzation)
@@ -2610,18 +2700,16 @@ licenseMonitor is an open source software for EDA software license information d
         cost_tab_server_label.setStyleSheet('font-weight: bold;')
         cost_tab_server_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.cost_tab_server_combo = QComboBox(self.cost_tab_frame0)
+        self.cost_tab_server_combo = common_pyqt5.QComboCheckBox(self.cost_tab_frame0)
         self.set_cost_tab_server_combo()
-        self.cost_tab_server_combo.activated.connect(self.cost_tab_server_combo_changed)
 
         # License vendor daemon
         cost_tab_vendor_label = QLabel('Vendor', self.cost_tab_frame0)
         cost_tab_vendor_label.setStyleSheet('font-weight: bold;')
         cost_tab_vendor_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.cost_tab_vendor_combo = QComboBox(self.cost_tab_frame0)
+        self.cost_tab_vendor_combo = common_pyqt5.QComboCheckBox(self.cost_tab_frame0)
         self.set_cost_tab_vendor_combo()
-        self.cost_tab_vendor_combo.activated.connect(self.cost_tab_vendor_combo_changed)
 
         # License Feature
         cost_tab_feature_label = QLabel('Feature', self.cost_tab_frame0)
@@ -2636,7 +2724,7 @@ licenseMonitor is an open source software for EDA software license information d
         cost_tab_check_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
         cost_tab_check_button.clicked.connect(self.filter_cost_tab)
 
-        # Begin_Data
+        # Begin_Date
         cost_tab_begin_date_label = QLabel('Begin_Date', self.cost_tab_frame0)
         cost_tab_begin_date_label.setStyleSheet("font-weight: bold;")
         cost_tab_begin_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -2644,11 +2732,10 @@ licenseMonitor is an open source software for EDA software license information d
         self.cost_tab_begin_date_edit = QDateEdit(self.cost_tab_frame0)
         self.cost_tab_begin_date_edit.setDisplayFormat('yyyy-MM-dd')
         self.cost_tab_begin_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
-        self.cost_tab_begin_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
         self.cost_tab_begin_date_edit.setCalendarPopup(True)
         self.cost_tab_begin_date_edit.setDate(QDate.currentDate().addMonths(-1))
 
-        # End_Data
+        # End_Date
         cost_tab_end_date_label = QLabel('End_Date', self.cost_tab_frame0)
         cost_tab_end_date_label.setStyleSheet("font-weight: bold;")
         cost_tab_end_date_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -2656,7 +2743,6 @@ licenseMonitor is an open source software for EDA software license information d
         self.cost_tab_end_date_edit = QDateEdit(self.cost_tab_frame0)
         self.cost_tab_end_date_edit.setDisplayFormat('yyyy-MM-dd')
         self.cost_tab_end_date_edit.setMinimumDate(QDate.currentDate().addDays(-3652))
-        self.cost_tab_end_date_edit.setMaximumDate(QDate.currentDate().addDays(0))
         self.cost_tab_end_date_edit.setCalendarPopup(True)
         self.cost_tab_end_date_edit.setDate(QDate.currentDate())
 
@@ -2691,7 +2777,6 @@ licenseMonitor is an open source software for EDA software license information d
         cost_tab_frame0_grid.addWidget(self.cost_tab_product_line, 1, 5)
         cost_tab_frame0_grid.addWidget(cost_tab_export_button, 1, 6)
 
-        cost_tab_frame0_grid.setColumnStretch(0, 1)
         cost_tab_frame0_grid.setColumnStretch(1, 1)
         cost_tab_frame0_grid.setColumnStretch(2, 1)
         cost_tab_frame0_grid.setColumnStretch(3, 1)
@@ -2705,47 +2790,21 @@ licenseMonitor is an open source software for EDA software license information d
         """
         Set (initialize) self.cost_tab_server_combo.
         """
-        self.cost_tab_server_combo.clear()
+        # Get license_server list.
+        license_server_list = self.get_license_server_list()
+        license_server_list.insert(0, 'ALL')
 
-        license_server_list = ['ALL', ]
-
-        for license_server in self.license_dic.keys():
-            license_server_list.append(license_server)
-
-        for license_server in license_server_list:
-            self.cost_tab_server_combo.addItem(license_server)
-
-    def cost_tab_server_combo_changed(self):
-        """
-        If self.cost_tab_server_combo is selected, update self.cost_tab_vendor_combo, then filter license feature on cost_tab.
-        """
-        self.set_cost_tab_vendor_combo()
-        self.filter_cost_tab()
+        self.set_common_checkbox_combo(self.cost_tab_server_combo, license_server_list)
 
     def set_cost_tab_vendor_combo(self):
         """
         Set (initialize) self.cost_tab_vendor_combo.
         """
-        self.cost_tab_vendor_combo.clear()
+        # Get vendor_daemon list.
+        vendor_daemon_list = self.get_vendor_daemon_list()
+        vendor_daemon_list.insert(0, 'ALL')
 
-        vendor_daemon_list = ['ALL', ]
-        selected_license_server = self.cost_tab_server_combo.currentText().strip()
-
-        for license_server in self.license_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
-                for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
-                    if vendor_daemon not in vendor_daemon_list:
-                        vendor_daemon_list.append(vendor_daemon)
-
-        for vendor_daemon in vendor_daemon_list:
-            self.cost_tab_vendor_combo.addItem(vendor_daemon)
-
-    def cost_tab_vendor_combo_changed(self):
-        """
-        If self.cost_tab_vendor_combo is selected, filter license feature on cost_tab.
-        """
-        if self.cost_tab_vendor_combo.count() > 2:
-            self.filter_cost_tab()
+        self.set_common_checkbox_combo(self.cost_tab_vendor_combo, vendor_daemon_list)
 
     def filter_cost_tab(self):
         """
@@ -2760,16 +2819,13 @@ licenseMonitor is an open source software for EDA software license information d
         Get EDA license feature cost information from config.db_path/license_server/<license_server>/<vendor_deamon>/usage.db.
         """
         # Print loading cost informaiton message.
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Loading cost info, please wait a moment ...')
+        common.bprint('Load cost info ...', date_format='%Y-%m-%d %H:%M:%S')
 
         # Print loading cost informaiton message with GUI.
         my_show_message = ShowMessage('Info', 'Loading cost info, please wait a moment ...')
         my_show_message.start()
 
         cost_dic = {}
-        fuzzy_cost_dic = {}
 
         begin_date = self.cost_tab_begin_date_edit.date().toString(Qt.ISODate)
         begin_date = str(begin_date) + ' 00:00:00'
@@ -2779,157 +2835,198 @@ licenseMonitor is an open source software for EDA software license information d
         end_second = int(datetime.datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").timestamp())
         select_condition = 'WHERE sample_second>' + str(begin_second) + ' AND start_second<' + str(end_second)
 
-        selected_license_server = self.cost_tab_server_combo.currentText().strip()
-        selected_vendor_daemon = self.cost_tab_vendor_combo.currentText().strip()
-        specified_license_feature_list = self.cost_tab_feature_line.text().strip().split()
+        selected_license_server_dic = self.cost_tab_server_combo.selectedItems()
+        selected_license_server_list = list(selected_license_server_dic.values())
+        selected_vendor_daemon_dic = self.cost_tab_vendor_combo.selectedItems()
+        selected_vendor_daemon_list = list(selected_vendor_daemon_dic.values())
+        selected_license_feature_list = self.cost_tab_feature_line.text().strip().split()
+        selected_license_product = self.cost_tab_product_line.text().strip()
+
+        self.update_db_info()
+        self.update_project_list()
+        self.update_project_setting_info()
+        self.update_product_feature_info()
+        self.update_feature_record_info()
 
         # Filter with license_server/vendor_daemon/feature.
         for license_server in self.db_dic.keys():
-            if (selected_license_server == 'ALL') or (selected_license_server == license_server):
+            if ('ALL' in selected_license_server_list) or (license_server in selected_license_server_list):
                 for vendor_daemon in self.db_dic[license_server].keys():
-                    if (selected_vendor_daemon == 'ALL') or (selected_vendor_daemon == vendor_daemon):
+                    if ('ALL' in selected_vendor_daemon_list) or (vendor_daemon in selected_vendor_daemon_list):
                         # Get full feature information from utilization database.
                         if 'utilization' in self.db_dic[license_server][vendor_daemon].keys():
                             utilization_db_file = self.db_dic[license_server][vendor_daemon]['utilization']
                             (utilization_db_file_connect_result, utilization_db_conn) = common_sqlite3.connect_db_file(utilization_db_file)
 
                             if utilization_db_file_connect_result == 'failed':
-                                common.print_warning('*Warning*: Failed on connecting utilization database file "' + str(utilization_db_file) + '".')
+                                common.bprint('Failed on connecting utilization database file "' + str(utilization_db_file) + '".', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
                             else:
+                                # Get specified_license_feature_list.
                                 utilization_db_table_list = common_sqlite3.get_sql_table_list(utilization_db_file, utilization_db_conn)
+                                specified_license_feature_list = self.count_specified_license_feature_list(utilization_db_table_list, vendor_daemon, selected_license_feature_list, selected_license_product)
 
-                                for feature in utilization_db_table_list:
-                                    if feature != 'sqlite_sequence':
-                                        # Check fuzzy_mode.
-                                        fuzzy_mode = False
+                                # Get specified feature data.
+                                for feature in specified_license_feature_list:
+                                    cost_dic.setdefault(feature, {})
+                                    cost_dic[feature].setdefault(vendor_daemon, {'project_runtime': {}, 'project_rate': {}, 'total_runtime': 0})
 
-                                        for specified_license_feature in specified_license_feature_list:
-                                            if (feature != specified_license_feature) and re.search(re.escape(specified_license_feature.lower()), feature.lower()):
-                                                fuzzy_mode = True
-                                                break
+                                    for project in self.project_list:
+                                        cost_dic[feature][vendor_daemon]['project_runtime'].setdefault(project, 0)
 
-                                        # feature match or fuzzy_mode.
-                                        if (not specified_license_feature_list) or (feature in specified_license_feature_list) or fuzzy_mode:
-                                            if fuzzy_mode:
-                                                fuzzy_cost_dic.setdefault(feature, {})
-                                                fuzzy_cost_dic[feature].setdefault(vendor_daemon, {})
-
-                                                for project in self.project_list:
-                                                    fuzzy_cost_dic[feature][vendor_daemon].setdefault(project, 0)
-                                            else:
-                                                cost_dic.setdefault(feature, {})
-                                                cost_dic[feature].setdefault(vendor_daemon, {})
-
-                                                for project in self.project_list:
-                                                    cost_dic[feature][vendor_daemon].setdefault(project, 0)
-
-                        # Get used feature information from utilization database.
+                        # Get used feature information from usage database.
                         if 'usage' in self.db_dic[license_server][vendor_daemon].keys():
                             usage_db_file = self.db_dic[license_server][vendor_daemon]['usage']
                             (usage_db_file_connect_result, usage_db_conn) = common_sqlite3.connect_db_file(usage_db_file)
 
                             if usage_db_file_connect_result == 'failed':
-                                common.print_warning('*Warning*: Failed on connecting usage database file "' + str(usage_db_file) + '".')
+                                common.bprint('Failed on connecting usage database file "' + str(usage_db_file) + '".', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
                             else:
+                                # Get specified_license_feature_list.
                                 usage_db_table_list = common_sqlite3.get_sql_table_list(usage_db_file, usage_db_conn)
+                                specified_license_feature_list = self.count_specified_license_feature_list(usage_db_table_list, vendor_daemon, selected_license_feature_list, selected_license_product)
 
-                                for feature in usage_db_table_list:
-                                    if feature != 'sqlite_sequence':
-                                        # Check fuzzy_mode.
-                                        fuzzy_mode = False
+                                # Get specified feature data.
+                                for feature in specified_license_feature_list:
+                                    data_dic = common_sqlite3.get_sql_table_data(usage_db_file, usage_db_conn, feature, ['sample_second', 'user', 'submit_host', 'execute_host', 'num', 'start_second'], select_condition)
 
-                                        for specified_license_feature in specified_license_feature_list:
-                                            if (feature != specified_license_feature) and re.search(re.escape(specified_license_feature.lower()), feature.lower()):
-                                                fuzzy_mode = True
-                                                break
+                                    if data_dic:
+                                        # Save project data.
+                                        cost_dic.setdefault(feature, {})
+                                        cost_dic[feature].setdefault(vendor_daemon, {'project_runtime': {}, 'project_rate': {}, 'total_runtime': 0})
 
-                                        # feature match or fuzzy_mode.
-                                        if (not specified_license_feature_list) or (feature in specified_license_feature_list) or fuzzy_mode:
-                                            data_dic = common_sqlite3.get_sql_table_data(usage_db_file, usage_db_conn, feature, ['sample_second', 'user', 'submit_host', 'execute_host', 'num', 'start_second'], select_condition)
+                                        for project in self.project_list:
+                                            cost_dic[feature][vendor_daemon]['project_runtime'].setdefault(project, 0)
 
-                                            if data_dic:
-                                                if fuzzy_mode:
-                                                    fuzzy_cost_dic.setdefault(feature, {})
-                                                    fuzzy_cost_dic[feature].setdefault(vendor_daemon, {})
+                                        for (i, sample_second) in enumerate(data_dic['sample_second']):
+                                            num = int(data_dic['num'][i])
+                                            start_second = int(data_dic['start_second'][i])
 
-                                                    for project in self.project_list:
-                                                        fuzzy_cost_dic[feature][vendor_daemon].setdefault(project, 0)
+                                            # Get total runtime for the feature usage record.
+                                            if start_second >= begin_second:
+                                                if sample_second >= end_second:
+                                                    runtime_second = num * (end_second - start_second)
                                                 else:
-                                                    cost_dic.setdefault(feature, {})
-                                                    cost_dic[feature].setdefault(vendor_daemon, {})
+                                                    runtime_second = num * (sample_second - start_second)
+                                            else:
+                                                if sample_second >= end_second:
+                                                    runtime_second = num * (end_second - begin_second)
+                                                else:
+                                                    runtime_second = num * (sample_second - begin_second)
 
-                                                    for project in self.project_list:
-                                                        cost_dic[feature][vendor_daemon].setdefault(project, 0)
+                                            # Get project runtime information for the feature usage record.
+                                            project_dic = self.get_project_info(submit_host=data_dic['submit_host'][i], execute_host=data_dic['execute_host'][i], user=data_dic['user'][i], start_second=start_second)
 
-                                                for (i, sample_second) in enumerate(data_dic['sample_second']):
-                                                    num = int(data_dic['num'][i])
-                                                    start_second = int(data_dic['start_second'][i])
-
-                                                    # Get total runtime for the feature usage record.
-                                                    if start_second >= begin_second:
-                                                        if sample_second >= end_second:
-                                                            runtime_second = num * (end_second - start_second)
-                                                        else:
-                                                            runtime_second = num * (sample_second - start_second)
-                                                    else:
-                                                        if sample_second >= end_second:
-                                                            runtime_second = num * (end_second - begin_second)
-                                                        else:
-                                                            runtime_second = num * (sample_second - begin_second)
-
-                                                    # Get project runtime information for the feature usage record.
-                                                    project_dic = self.get_project_info(submit_host=data_dic['submit_host'][i], execute_host=data_dic['execute_host'][i], user=data_dic['user'][i], start_second=start_second)
-
-                                                    if project_dic:
-                                                        for project in project_dic.keys():
-                                                            if project in self.project_list:
-                                                                if fuzzy_mode:
-                                                                    fuzzy_cost_dic[feature][vendor_daemon][project] += project_dic[project] * runtime_second
-                                                                else:
-                                                                    cost_dic[feature][vendor_daemon][project] += project_dic[project] * runtime_second
-                                                            else:
-                                                                if self.enable_cost_others_project:
-                                                                    # If not find any product information, collect runtime into 'others' group.
-                                                                    if fuzzy_mode:
-                                                                        fuzzy_cost_dic[feature][vendor_daemon]['others'] += runtime_second
-                                                                    else:
-                                                                        cost_dic[feature][vendor_daemon]['others'] += runtime_second
+                                            if project_dic:
+                                                for project in project_dic.keys():
+                                                    if project in self.project_list:
+                                                        cost_dic[feature][vendor_daemon]['project_runtime'][project] += project_dic[project] * runtime_second
+                                                        cost_dic[feature][vendor_daemon]['total_runtime'] += project_dic[project] * runtime_second
                                                     else:
                                                         if self.enable_cost_others_project:
                                                             # If not find any product information, collect runtime into 'others' group.
-                                                            if fuzzy_mode:
-                                                                fuzzy_cost_dic[feature][vendor_daemon]['others'] += runtime_second
-                                                            else:
-                                                                cost_dic[feature][vendor_daemon]['others'] += runtime_second
+                                                            cost_dic[feature][vendor_daemon]['project_runtime']['others'] += runtime_second
+                                                            cost_dic[feature][vendor_daemon]['total_runtime'] += runtime_second
+                                            else:
+                                                if self.enable_cost_others_project:
+                                                    # If not find any product information, collect runtime into 'others' group.
+                                                    cost_dic[feature][vendor_daemon]['project_runtime']['others'] += runtime_second
+                                                    cost_dic[feature][vendor_daemon]['total_runtime'] += runtime_second
 
                                 usage_db_conn.close()
 
-        # Filter with feature on fuzzy mode.
-        if (not cost_dic) and fuzzy_cost_dic:
-            cost_dic = fuzzy_cost_dic
-
         # Filter with white/black feature list.
+        cost_white_feature_list = self.parse_feature_product_filter_file('cost', 'white', 'feature')
+        cost_black_feature_list = self.parse_feature_product_filter_file('cost', 'black', 'feature')
         filtered_cost_dic = copy.deepcopy(cost_dic)
 
-        if self.cost_white_feature_list:
+        if cost_white_feature_list:
             filtered_cost_dic = {}
 
-            for white_feature in self.cost_white_feature_list:
+            for white_feature in cost_white_feature_list:
                 for feature in cost_dic.keys():
                     if re.match(white_feature, feature):
                         filtered_cost_dic[feature] = cost_dic[feature]
-        elif self.cost_black_feature_list:
-            for black_feature in self.cost_black_feature_list:
+        elif cost_black_feature_list:
+            for black_feature in cost_black_feature_list:
                 for feature in cost_dic.keys():
                     if re.match(black_feature, feature):
                         del filtered_cost_dic[feature]
 
+        # Set mini total_runtime=3600.
+        for feature in filtered_cost_dic.keys():
+            for vendor_daemon in filtered_cost_dic[feature].keys():
+                if 0 < filtered_cost_dic[feature][vendor_daemon]['total_runtime'] < 3600:
+                    filtered_cost_dic[feature][vendor_daemon]['total_runtime'] = 3600
+
+        # If total_runtime == 0, try to get feature usage information from license log.
+        if self.enable_cost_log_search and self.feature_record_dic:
+            for feature in filtered_cost_dic.keys():
+                for vendor_daemon in filtered_cost_dic[feature].keys():
+                    if (filtered_cost_dic[feature][vendor_daemon]['total_runtime'] == 0) and (feature in self.feature_record_dic) and (vendor_daemon in self.feature_record_dic[feature]):
+                        for license_server in self.feature_record_dic[feature][vendor_daemon].keys():
+                            for record_dic in self.feature_record_dic[feature][vendor_daemon][license_server]:
+                                project_dic = self.get_project_info(submit_host='', execute_host=record_dic['host'], user=record_dic['user'], start_second=0)
+
+                                if project_dic:
+                                    for project in project_dic.keys():
+                                        if project in self.project_list:
+                                            filtered_cost_dic[feature][vendor_daemon]['project_runtime'][project] += project_dic[project] * 36
+                                        else:
+                                            if self.enable_cost_others_project:
+                                                # If not find any product information, collect runtime into 'others' group.
+                                                filtered_cost_dic[feature][vendor_daemon]['project_runtime']['others'] += 36
+                                else:
+                                    if self.enable_cost_others_project:
+                                        # If not find any product information, collect runtime into 'others' group.
+                                        filtered_cost_dic[feature][vendor_daemon]['project_runtime']['others'] += 36
+
+                                filtered_cost_dic[feature][vendor_daemon]['total_runtime'] += 36
+
+        # Get project_rate.
+        for feature in filtered_cost_dic.keys():
+            for vendor_daemon in filtered_cost_dic[feature].keys():
+                total_runtime = filtered_cost_dic[feature][vendor_daemon]['total_runtime']
+
+                for project in filtered_cost_dic[feature][vendor_daemon]['project_runtime'].keys():
+                    if total_runtime == 0:
+                        project_rate = 0
+                    else:
+                        project_runtime = filtered_cost_dic[feature][vendor_daemon]['project_runtime'][project]
+                        project_rate = round(100*project_runtime/total_runtime, 2)
+
+                    if re.match(r'^(\d+)\.0+$', str(project_rate)):
+                        my_match = re.match(r'^(\d+)\.0+$', str(project_rate))
+                        project_rate = int(my_match.group(1))
+
+                    filtered_cost_dic[feature][vendor_daemon]['project_rate'][project] = project_rate
+
         my_show_message.terminate()
 
         if not filtered_cost_dic:
-            common.print_warning('*Warning*: No cost data is find.')
+            common.bprint('No cost data is find.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
 
         return filtered_cost_dic
+
+    def update_project_setting_info(self):
+        """
+        Update self.project_setting and self.project_setting_create_second_list with config.db_path/project_setting.
+        """
+        common.bprint('Parse config.db_path/project_setting', date_format='%Y-%m-%d %H:%M:%S')
+
+        project_setting_dic = {}
+        self.project_setting_dic = {}
+        self.project_setting_create_second_list = []
+        project_setting_db_path = str(config.db_path) + '/project_setting'
+
+        if os.path.exists(project_setting_db_path):
+            project_setting_dic = common_license.parse_project_setting_db_path(project_setting_db_path)
+        else:
+            common.bprint('"' + str(project_setting_db_path) + '": No such directory.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
+
+        for create_time in project_setting_dic.keys():
+            create_second = int(time.mktime(time.strptime(str(create_time), '%Y%m%d%H%M%S')))
+            self.project_setting_dic.setdefault(create_second, project_setting_dic[create_time])
+            self.project_setting_create_second_list.append(create_second)
 
     def get_project_info(self, submit_host, execute_host, user, start_second):
         """
@@ -2945,7 +3042,7 @@ licenseMonitor is an open source software for EDA software license information d
                 if ((i == 0) and (start_second <= create_second)) or ((i == len(self.project_setting_create_second_list)-1) and (start_second >= create_second)) or ((i < len(self.project_setting_create_second_list)-1) and (start_second >= create_second) and (start_second <= self.project_setting_create_second_list[i+1])):
                     for project_primary_factor in project_primary_factor_list:
                         if project_primary_factor not in factor_dic.keys():
-                            common.print_error('*Error*: "' + str(project_primary_factor) + '": invalid project_primary_factors setting on config file.')
+                            common.bprint('"' + str(project_primary_factor) + '": invalid project_primary_factors setting on config file.', date_format='%Y-%m-%d %H:%M:%S', level='Error')
                             sys.exit(1)
                         else:
                             factor_value = factor_dic[project_primary_factor]
@@ -2972,6 +3069,7 @@ licenseMonitor is an open source software for EDA software license information d
         else:
             self.cost_tab_table_title_list = ['Feature', 'Vendor', 'RunTime (H)']
 
+        self.update_project_list()
         self.cost_tab_table_title_list.extend(self.project_list)
 
         self.cost_tab_table.setShowGrid(True)
@@ -3000,13 +3098,6 @@ licenseMonitor is an open source software for EDA software license information d
                 for vendor_daemon in cost_dic[feature].keys():
                     i += 1
 
-                    # Get total_runtime information.
-                    total_runtime = 0
-
-                    for project in cost_dic[feature][vendor_daemon].keys():
-                        project_runtime = cost_dic[feature][vendor_daemon][project]
-                        total_runtime += project_runtime
-
                     # Fill "Feature" item.
                     item = QTableWidgetItem(feature)
                     self.cost_tab_table.setItem(i, 0, item)
@@ -3017,10 +3108,12 @@ licenseMonitor is an open source software for EDA software license information d
 
                     # Fill "RunTime" item.
                     item = QTableWidgetItem()
+
+                    total_runtime = cost_dic[feature][vendor_daemon]['total_runtime']
                     total_runtime_hour = int(total_runtime/3600)
 
                     if (total_runtime != 0) and (total_runtime_hour == 0):
-                        total_runtime_hour = 0.1
+                        total_runtime_hour = round(float(total_runtime)/3600, 2)
 
                     item.setData(Qt.DisplayRole, total_runtime_hour)
 
@@ -3033,17 +3126,8 @@ licenseMonitor is an open source software for EDA software license information d
                     j = 2
 
                     for project in self.project_list:
-                        if project in cost_dic[feature][vendor_daemon].keys():
-                            project_runtime = cost_dic[feature][vendor_daemon][project]
-
-                            if total_runtime == 0:
-                                project_rate = 0
-                            else:
-                                project_rate = round(100*project_runtime/total_runtime, 2)
-
-                            if re.match(r'^(\d+)\.0+$', str(project_rate)):
-                                my_match = re.match(r'^(\d+)\.0+$', str(project_rate))
-                                project_rate = int(my_match.group(1))
+                        if project in cost_dic[feature][vendor_daemon]['project_rate'].keys():
+                            project_rate = cost_dic[feature][vendor_daemon]['project_rate'][project]
 
                             item = QTableWidgetItem()
                             item.setData(Qt.DisplayRole, str(project_rate) + '%')
@@ -3065,6 +3149,8 @@ licenseMonitor is an open source software for EDA software license information d
                 current_row = self.cost_tab_table.currentRow()
                 feature = self.cost_tab_table.item(current_row, 0).text().strip()
 
+                self.set_feature_tab_server_combo()
+                self.set_feature_tab_vendor_combo()
                 self.feature_tab_feature_line.setText(feature)
                 self.filter_feature_tab_license_feature(get_license_info=False)
                 self.main_tab.setCurrentWidget(self.feature_tab)
@@ -3120,317 +3206,16 @@ licenseMonitor is an open source software for EDA software license information d
                 table_info_list.append(row_list)
 
             # Write excel
-            print('* [' + str(current_time) + '] Writing ' + str(table_type) + ' table into "' + str(output_file) + '" ...')
+            common.bprint('Write ' + str(table_type) + ' table into "' + str(output_file) + '"', date_format='%Y-%m-%d %H:%M:%S')
 
             common.write_excel(excel_file=output_file, contents_list=table_info_list, specified_sheet_name=table_type)
 # Export table (end) #
 
-    def close_event(self, QCloseEvent):
+    def closeEvent(self, QCloseEvent):
         """
         When window close, post-process.
         """
-        print('Bye')
-
-
-class LicenseLogWindow(QMainWindow):
-    def __init__(self, server='', vendor='', feature='', user='', lic_files=''):
-        super().__init__()
-
-        self.server = server
-        self.vendor = vendor
-        self.feature = feature
-        self.user = user
-        self.lic_files = lic_files
-
-        # Generate GUI.
-        self.init_ui()
-
-    def init_ui(self):
-        # Set License Log Window title
-        self.setWindowTitle('Licence Log')
-
-        # Set size & position
-        self.license_log_widget = QWidget()
-        self.setCentralWidget(self.license_log_widget)
-        self.resize(800, 525)
-        common_pyqt5.center_window(self)
-
-        self.license_log_frame = QFrame(self.license_log_widget)
-        self.license_log_frame.setFrameShadow(QFrame.Raised)
-        self.license_log_frame.setFrameShape(QFrame.Box)
-
-        self.license_log_table = QTableWidget(self.license_log_widget)
-
-        self.license_log_grid = QGridLayout()
-
-        self.license_log_grid.addWidget(self.license_log_frame, 0, 0)
-        self.license_log_grid.addWidget(self.license_log_table, 1, 0)
-        self.license_log_grid.setRowStretch(0, 1)
-        self.license_log_grid.setRowStretch(1, 10)
-
-        self.license_log_widget.setLayout(self.license_log_grid)
-
-        self.gen_license_log_frame()
-        self.gen_license_log_table()
-
-    def gen_license_log_frame(self):
-        # License Server
-        self.server_label0 = QLabel('Server', self.license_log_frame)
-        self.server_label0.setStyleSheet('font-weight: bold;')
-        self.server_label0.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.server_label1 = QLabel(self.server, self.license_log_frame)
-        self.server_label1.setAlignment(Qt.AlignVCenter)
-
-        # License vendor/daemon
-        self.vendor_label0 = QLabel('Vendor', self.license_log_frame)
-        self.vendor_label0.setStyleSheet('font-weight: bold;')
-        self.vendor_label0.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.vendor_label1 = QLabel(self.vendor, self.license_log_frame)
-        self.vendor_label1.setAlignment(Qt.AlignVCenter)
-
-        # License Feature
-        self.feature_label = QLabel('Feature', self.license_log_frame)
-        self.feature_label.setStyleSheet('font-weight: bold;')
-        self.feature_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.feature_line = QLineEdit()
-        self.feature_line.setText(self.feature)
-        self.feature_line.returnPressed.connect(self.gen_license_log_table)
-
-        # License User
-        self.user_label = QLabel('User', self.license_log_frame)
-        self.user_label.setStyleSheet('font-weight: bold;')
-        self.user_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.user_line = QLineEdit()
-        self.user_line.setText(self.user)
-        self.user_line.returnPressed.connect(self.gen_license_log_table)
-
-        # License Status
-        self.status_label = QLabel('Status', self.license_log_frame)
-        self.status_label.setStyleSheet('font-weight: bold;')
-        self.status_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        self.status_combo = QComboBox(self.license_log_frame)
-        self.set_status_combo()
-        self.status_combo.activated.connect(self.gen_license_log_table)
-
-        # License Log Check
-        self.check_button = QPushButton('Check', self.license_log_frame)
-        self.check_button.clicked.connect(self.gen_license_log_table)
-
-        self.license_log_frame_grid = QGridLayout()
-        self.license_log_frame_grid.addWidget(self.server_label0, 0, 0)
-        self.license_log_frame_grid.addWidget(self.server_label1, 0, 1)
-        self.license_log_frame_grid.addWidget(self.vendor_label0, 0, 2)
-        self.license_log_frame_grid.addWidget(self.vendor_label1, 0, 3)
-        self.license_log_frame_grid.addWidget(self.check_button, 0, 5)
-        self.license_log_frame_grid.addWidget(self.feature_label, 2, 0)
-        self.license_log_frame_grid.addWidget(self.feature_line, 2, 1)
-        self.license_log_frame_grid.addWidget(self.user_label, 2, 2)
-        self.license_log_frame_grid.addWidget(self.user_line, 2, 3)
-        self.license_log_frame_grid.addWidget(self.status_label, 2, 4)
-        self.license_log_frame_grid.addWidget(self.status_combo, 2, 5)
-
-        self.license_log_frame_grid.setColumnStretch(0, 1)
-        self.license_log_frame_grid.setColumnStretch(1, 1)
-        self.license_log_frame_grid.setColumnStretch(2, 1)
-        self.license_log_frame_grid.setColumnStretch(3, 1)
-        self.license_log_frame_grid.setColumnStretch(4, 1)
-        self.license_log_frame_grid.setColumnStretch(5, 1)
-        self.license_log_frame_grid.setColumnStretch(6, 1)
-
-        self.license_log_frame.setLayout(self.license_log_frame_grid)
-
-    def get_license_log_info(self, feature='', user='', status='ALL'):
-        current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        print('* [' + str(current_time) + '] Loading license log, please wait a moment ...')
-
-        my_show_message = ShowMessage('Info', 'Loading license log, please wait a moment ...')
-        my_show_message.start()
-
-        if hasattr(config, 'max_record_num') and config.max_record_num and re.match(r'^\d+$', str(config.max_record_num)):
-            max_record_num = int(config.max_record_num)
-        else:
-            max_record_num = 1000
-
-        license_log_class = LicenseLog(server=self.server, vendor=self.vendor, feature=feature, user=user, status=status, lic_files=self.lic_files, max_record_num=max_record_num)
-        license_log_info_list = license_log_class.license_log_info_list
-
-        my_show_message.terminate()
-
-        return license_log_info_list
-
-    def gen_license_log_table(self):
-        self.license_log_table.setShowGrid(True)
-        self.license_log_table.setSortingEnabled(True)
-        self.license_log_table.setColumnCount(6)
-        self.license_log_table.setHorizontalHeaderLabels(['Log Time', 'Status', 'Feature', 'User', 'Execute_Host', 'Info'])
-
-        self.license_log_table.setColumnWidth(0, 80)
-        self.license_log_table.setColumnWidth(1, 120)
-        self.license_log_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.license_log_table.setColumnWidth(3, 120)
-        self.license_log_table.setColumnWidth(4, 120)
-        self.license_log_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
-
-        # Get license log info
-        feature = self.feature_line.text().strip()
-        user = self.user_line.text().strip()
-        status = self.status_combo.currentText().strip()
-        license_log_info_list = self.get_license_log_info(feature=feature, user=user, status=status)
-
-        # Get license log num.
-        license_log_num = len(license_log_info_list)
-
-        # Fill license_log_table.
-        self.license_log_table.setRowCount(0)
-        self.license_log_table.setRowCount(license_log_num)
-        self.license_log_table. setSortingEnabled(False)
-
-        row = -1
-
-        for record in license_log_info_list:
-            row += 1
-
-            item = QTableWidgetItem()
-            item.setText(record.log_time)
-            self.license_log_table.setItem(row, 0, item)
-
-            item = QTableWidgetItem()
-            item.setText(record.status)
-            self.license_log_table.setItem(row, 1, item)
-
-            item = QTableWidgetItem()
-            item.setText(record.feature)
-            self.license_log_table.setItem(row, 2, item)
-
-            item = QTableWidgetItem()
-            item.setText(record.user)
-            self.license_log_table.setItem(row, 3, item)
-
-            item = QTableWidgetItem()
-            item.setText(record.exec_host)
-            self.license_log_table.setItem(row, 4, item)
-
-            info = record.info if record.info else ''
-
-            item = QTableWidgetItem()
-            item.setText(info)
-            self.license_log_table.setItem(row, 5, item)
-
-    def set_status_combo(self):
-        """
-        Set self.status_combo
-        """
-        self.status_combo.clear()
-
-        for status in ['ALL', 'OUT', 'IN', 'DENIED', 'QUEUED', 'UNSUPPORTED']:
-            self.status_combo.addItem(status)
-
-
-class LicenseRecord:
-    def __init__(self, log_time, status, feature, user, exec_host, info):
-        self.log_time = log_time
-        self.status = status
-        self.feature = feature
-        self.user = user
-        self.exec_host = exec_host
-        self.info = info
-
-
-class LicenseLog:
-    """
-    Get feature/user information from license log file.
-    """
-    def __init__(self, server='', vendor='', feature='', user='', status='', lic_files='', max_record_num=1000):
-        self.server = server
-        self.vendor = vendor
-        self.feature = feature
-        self.user = user
-        self.status = status
-        self.lic_files = lic_files
-        self.max_record_num = max_record_num
-
-        # Main data structrue for LicenseLog, save all license log information.
-        self.license_log_info_list = []
-
-        # Get self.license_log_info_list.
-        if self.feature:
-            self.get_license_log_info()
-
-    def get_license_log_info(self):
-        """
-        Get self.license_log_info_list.
-        """
-        # Get real license log path.
-        license_log = ''
-        license_server_host = self.server.split('@')[1]
-
-        if (not license_log) and self.lic_files:
-            lic_log_rec = re.compile(r'^.*lmgrd.*\s+-c\s+(.*)\s+-l\s+(\S+)\s*.*$')
-            command = 'ps -aux | grep lmgrd '
-
-            stdout_list = common.ssh_client(host_name=license_server_host, user_name=str(getpass.getuser()), command=command, timeout=1)
-
-            for line in stdout_list:
-                if my_match := lic_log_rec.match(line):
-                    license_file_info = my_match.group(1)
-
-                    if self.lic_files.find(license_file_info) != -1:
-                        license_log = my_match.group(2)
-
-        # Get expected information from license log.
-        if not license_log:
-            common.print_warning('*Warning*: Could not find ' + str(self.vendor) + ' license log file in ' + str(self.server) + ' ...')
-        else:
-            if os.path.exists(license_log):
-                grep_cmd = 'grep \'"%s"\' %s ' % (self.feature, license_log)
-                (return_code, stdout, stderr) = common.run_command(grep_cmd)
-                stdout_list = str(stdout, 'unicode_escape').split('\n')
-            else:
-                grep_cmd = 'grep \'"%s"\' %s | tail -n %s' % (self.feature, license_log, str(self.max_record_num))
-                stdout_list = common.ssh_client(host_name=license_server_host, user_name=str(getpass.getuser()), command=grep_cmd, timeout=20)
-
-            self.parse_license_log_info(license_log, stdout_list)
-
-    def parse_license_log_info(self, license_log, stdout_list):
-        """
-        Parse license log, get expected info, save into self.license_log_info_list.
-        """
-        if not stdout_list:
-            common.print_warning('*Warning*: Could not find any infomation when reading license log file ' + str(license_log) + '...')
-            return
-
-        if self.status == 'ALL':
-            log_rec = re.compile(r'^\s*([0-9:]+)\s*\(\S+\)\s+\b(DENIED|IN|OUT|UNSUPPORTED|QUEUED)+\b:\s+\"(.*%s.*)\".*\s+(.*%s.*)(?=@)@(\S+).\s*(.*)\s*$' % (self.feature, self.user))
-        else:
-            log_rec = re.compile(r'^\s*([0-9:]+)\s*\(\S+\)\s+\b(%s)+\b:\s+\"(.*%s.*)\".*\s+(.*%s.*)(?=@)@(\S+).\s*(.*)\s*$' % (self.status, self.feature, self.user))
-
-        info_num = len(stdout_list)
-
-        for i in range(info_num):
-            if i >= self.max_record_num:
-                break
-
-            line = stdout_list[info_num - 1 - i]
-
-            if my_match := log_rec.match(line):
-                log_time = my_match.group(1)
-                status = my_match.group(2)
-                feature = my_match.group(3)
-                user = my_match.group(4)
-                exec_host = my_match.group(5)
-                info = my_match.group(6).strip()
-
-                if info.find(']') != -1:
-                    info = info.split(']')[1]
-
-                license_record = LicenseRecord(log_time, status, feature, user, exec_host, info)
-                self.license_log_info_list.append(license_record)
+        common.bprint('Bye', date_format='%Y-%m-%d %H:%M:%S')
 
 
 class ShowMessage(QThread):
@@ -3444,6 +3229,38 @@ class ShowMessage(QThread):
 
     def run(self):
         command = 'python3 ' + str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/tools/message.py --title "' + str(self.title) + '" --message "' + str(self.message) + '"'
+        os.system(command)
+
+    def terminate(self):
+        time.sleep(0.01)
+        QThread.terminate(self)
+
+
+class ShowLicenseLogInfo(QThread):
+    """
+    Show specified message on license log.
+    """
+    def __init__(self):
+        super(ShowLicenseLogInfo, self).__init__()
+
+    def run(self, server='', vendor='', feature='', user='', lic_files=''):
+        command = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/tools/show_license_log_info'
+
+        if server:
+            command = str(command) + ' --server ' + str(server)
+
+        if vendor:
+            command = str(command) + ' --vendor ' + str(vendor)
+
+        if feature:
+            command = str(command) + ' --feature ' + str(feature)
+
+        if user:
+            command = str(command) + ' --user ' + str(user)
+
+        if lic_files:
+            command = str(command) + ' --lic_files ' + str(lic_files)
+
         os.system(command)
 
     def terminate(self):

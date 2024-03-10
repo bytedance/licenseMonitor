@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-################################
-# File Name   : update_product_feature_relationship.py
-# Author      : liyanqing.1987
-# Created On  : 2023-12-15 10:54:38
-# Description :
-################################
 import os
 import re
 import sys
@@ -75,7 +69,7 @@ class UpdateProductFeatureRelationship():
         print('>>> Setup Environment variable LM_LICENSE_FILE with "' + str(LM_LICENSE_FILE_file) + '"')
 
         if not os.path.exists(LM_LICENSE_FILE_file):
-            common.print_warning('*Warning*: "' + str(LM_LICENSE_FILE_file) + '": No such file.')
+            common.bprint('"' + str(LM_LICENSE_FILE_file) + '": No such file.', level='Warning')
             os.environ['LM_LICENSE_FILE'] = ''
         else:
             LM_LICENSE_FILE_list = []

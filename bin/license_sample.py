@@ -49,10 +49,10 @@ def read_args():
     args = parser.parse_args()
 
     if (not args.usage) and (not args.utilization):
-        common.print_error('*Error*: at least one argument of "usage/utilization" must be selected.')
+        common.bprint('At least one argument of "usage/utilization" must be selected.', level='Error')
         sys.exit(1)
 
-    return (args.usage, args.utilization)
+    return args.usage, args.utilization
 
 
 class Sampling:
@@ -104,8 +104,8 @@ class Sampling:
                 print('    Create directory "' + str(db_path) + '".')
                 os.makedirs(db_path, mode=0o755)
             except Exception as error:
-                common.print_error('*Error*: Failed on creating database directory "' + str(db_path) + '".')
-                common.print_error('         ' + str(error))
+                common.bprint('Failed on creating database directory "' + str(db_path) + '".', level='Error')
+                common.bprint(error, color='red', display_method=1, indent=9)
 
                 if not re.search('File exists', str(error)):
                     sys.exit(1)
@@ -118,8 +118,8 @@ class Sampling:
             print('    Copy "' + str(source_file) + '" into directory "' + str(target_dir) + '".')
             shutil.copy(source_file, target_dir)
         except Exception as warning:
-            common.print_warning('*Warning*: Failed on copying "' + str(source_file) + '" into directory "' + str(target_dir) + '".')
-            common.print_warning('           ' + str(warning))
+            common.bprint('Failed on copying "' + str(source_file) + '" into directory "' + str(target_dir) + '".', level='Warning')
+            common.bprint(warning, color='yellow', display_method=1, indent=11)
 
     def detect_project_setting(self):
         """
@@ -473,7 +473,7 @@ class Sampling:
 
             p.join()
         else:
-            common.print_warning('*Error*: No "db_path" is specified on config/config.py.')
+            common.bprint('No "db_path" is specified on config/config.py.', level='Error')
             sys.exit(1)
 
 

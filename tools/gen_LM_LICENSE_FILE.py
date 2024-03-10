@@ -1,23 +1,16 @@
-#!/ic/software/tools/python3/3.8.8/bin/python3
 # -*- coding: utf-8 -*-
-################################
-# File Name   : gen_LM_LICENSE_FILE.py
-# Author      : liyanqing.1987
-# Created On  : 2023-10-25 11:43:37
-# Description : Get LM_LICENSE_FILE settings from module files.
-################################
 import os
 import re
 import sys
-import stat
 import argparse
 
 CWD = os.getcwd()
 os.environ['PYTHONUNBUFFERED'] = '1'
 
 sys.path.insert(0, os.environ['LICENSE_MONITOR_INSTALL_PATH'])
-from config import config
+from common import common
 from common import common_license
+from config import config
 
 
 def read_args():
@@ -38,10 +31,10 @@ def read_args():
 
     for module_files_dir in args.module_files_dirs:
         if not os.path.exists(module_files_dir):
-            print('*Error*: "' + str(args.module_files_dir) + '": No such directory.')
+            common.bprint('"' + str(args.module_files_dir) + '": No such directory.', level='Error')
             sys.exit(1)
 
-    return (args.module_files_dirs, args.LM_LICENSE_FILE_file)
+    return args.module_files_dirs, args.LM_LICENSE_FILE_file
 
 
 def get_LM_LICENSE_FILE_setting(module_files_dir_list):
@@ -72,7 +65,7 @@ def get_LM_LICENSE_FILE_setting(module_files_dir_list):
                                     LM_LICENSE_FILE_list.append(license_server)
 
     if not LM_LICENSE_FILE_list:
-        print('*Warning*: Not get any valid LM_LICENSE_FILE setting.')
+        common.bprint('Not get any valid LM_LICENSE_FILE setting.', level='Warning')
     else:
         print('')
         print('>>> Checking license server status ...')
@@ -92,12 +85,12 @@ def get_LM_LICENSE_FILE_setting(module_files_dir_list):
                         mark = True
                         break
                     else:
-                        print('*Warning*: vendor daemon status is "' + str(license_dic[license_server]['vendor_daemon'][vendor_daemon]['vendor_daemon_status']) + '" for "' + str(license_server) + '/' + str(vendor_daemon) + '".')
+                        common.bprint('Vendor daemon status is "' + str(license_dic[license_server]['vendor_daemon'][vendor_daemon]['vendor_daemon_status']) + '" for "' + str(license_server) + '/' + str(vendor_daemon) + '".', level='Warning')
 
                 if mark:
                     LM_LICENSE_FILE_list.append(license_server)
             else:
-                print('*Warning*: license server status is "' + str(license_dic[license_server]['license_server_status']) + '" for "' + str(license_server) + '", ignore it.')
+                common.bprint('License server status is "' + str(license_dic[license_server]['license_server_status']) + '" for "' + str(license_server) + '", ignore it.', level='Warning')
 
     LM_LICENSE_FILE_list.sort()
 
@@ -117,7 +110,7 @@ def write_LM_LICENSE_FILE(LM_LICENSE_FILE_list, LM_LICENSE_FILE_file):
                 print('    ' + str(LM_LICENSE_FILE_setting))
                 LF.write(str(LM_LICENSE_FILE_setting) + '\n')
 
-        os.chmod(LM_LICENSE_FILE_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+        os.chmod(LM_LICENSE_FILE_file, 0o777)
 
         print('')
         print('* LM_LICENSE_FILE is saved on "' + str(LM_LICENSE_FILE_file) + '".')

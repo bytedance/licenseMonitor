@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-################################
-# File Name   : config_product_feature_relationship.py
-# Author      : liyanqing
-# Created On  : 2022-04-13 00:00:00
-# Description :
-################################
 import os
 import sys
 import yaml
@@ -12,6 +6,7 @@ import yaml
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QFrame, QGridLayout, QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
 
 sys.path.insert(0, os.environ['LICENSE_MONITOR_INSTALL_PATH'])
+from common import common
 from common import common_pyqt5
 from common import common_license
 
@@ -126,7 +121,7 @@ class MainWindow(QMainWindow):
                 print('>>> Parse license file "' + str(license_file) + '".')
                 license_file_dic = common_license.parse_license_file(license_file)
 
-        return (license_file_dic)
+        return license_file_dic
 
     def update_license_table(self):
         # Pre-check
@@ -264,9 +259,9 @@ class MainWindow(QMainWindow):
                     if product_list:
                         product_feature_relationship_dic[vendor][feature] = product_list
                     else:
-                        print('*Warning*: "' + str(feature) + '": Not find related product setting.')
+                        common.bprint('"' + str(feature) + '": Not find related product setting.', level='Warning')
                 else:
-                    print('*Warning*: "' + str(feature) + '": Repeated feature.')
+                    common.bprint('"' + str(feature) + '": Repeated feature.', level='Warning')
 
         # Write output_file.
         print('>>> Write output file "' + str(output_file) + '".')

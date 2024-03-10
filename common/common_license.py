@@ -54,22 +54,19 @@ class GetLicenseInfo():
                                         'license_files': '',
                                         'license_server_status': 'UNKNOWN',
                                         'license_server_version': '',
-                                        'vendor_daemon': { vendor_daemon: {
-                                                                           'vendor_daemon_status': 'UP',
+                                        'vendor_daemon': { vendor_daemon: {'vendor_daemon_status': 'UP',
                                                                            'vendor_daemon_version': '',
-                                                                           'feature': {feature: {
-                                                                                                 'issued': '0',
+                                                                           'feature': {feature: {'issued': '0',
                                                                                                  'in_use': '0',
                                                                                                  'in_use_info_string': [],
                                                                                                  'in_use_info': [],
                                                                                                 },
                                                                                       },
-                                                                           'expires': {feature: {
-                                                                                                 'version': '',
-                                                                                                 'license': '',
-                                                                                                 'vendor': '',
-                                                                                                 'expires': '',
-                                                                                                },
+                                                                           'expires': {feature: [{'version': '',
+                                                                                                  'license': '',
+                                                                                                  'vendor': '',
+                                                                                                  'expires': '',
+                                                                                                },]
                                                                                       },
                                                                           },
                                                          },
@@ -420,7 +417,8 @@ class FilterLicenseDic():
 
     def filter_show_mode_feature(self, license_dic, show_mode):
         """
-        Filter license_dic with show_mode (IN_USE/NOT_USED/ALL).
+        Filter license_dic with show_mode.
+        show_mode could be "IN_USE/NOT_USED" or "Expired/Nearly_Expired/Unexpired".
         """
         new_license_dic = {}
 
@@ -510,7 +508,7 @@ def switch_start_time(start_time, compare_second='', format=''):
         try:
             start_second = time.mktime(time.strptime(start_time_with_year, '%Y %a %m/%d %H:%M'))
         except Exception:
-            common.print_error('*Error*: variable "start_time_with_year", value is "' + str(start_time_with_year) + '", not follow the time format "%Y %a %m/%d %H:%M".')
+            common.bprint('Value of variable "start_time_with_year" is "' + str(start_time_with_year) + '", not follow the time format "%Y %a %m/%d %H:%M".', level='Error')
 
         if not compare_second:
             compare_second = time.time()
@@ -657,7 +655,7 @@ def parse_project_proportion_file(project_proportion_file, project_list=[]):
                     project = my_match.group(2)
 
                     if item in project_proportion_dic.keys():
-                        common.print_warning('*Warning*: "' + str(item) + '": repeated item on "' + str(project_proportion_file) + '", ignore.')
+                        common.bprint('"' + str(item) + '": repeated item on "' + str(project_proportion_file) + '", ignore.', level='Warning')
                         continue
                     else:
                         project_proportion_dic[item] = {project: 1}
@@ -674,14 +672,14 @@ def parse_project_proportion_file(project_proportion_file, project_list=[]):
                             project_proportion = my_match.group(2)
 
                             if project_list and (project not in project_list):
-                                common.print_warning('*Warning*: "' + str(project) + '": Invalid project on "' + str(project_proportion_file) + '", not on project_list.')
-                                common.print_warning('           ' + str(line))
+                                common.bprint('"' + str(project) + '": Invalid project on "' + str(project_proportion_file) + '", not on project_list.', level='Warning')
+                                common.bprint(line, color='yellow', display_method=1, indent=11)
                                 tmp_dic = {}
                                 break
 
                             if project in tmp_dic.keys():
-                                common.print_warning('*Warning*: "' + str(project) + '": Repeated project on "' + str(project_proportion_file) + '".')
-                                common.print_warning('           ' + str(line))
+                                common.bprint('"' + str(project) + '": Repeated project on "' + str(project_proportion_file) + '".', level='Warning')
+                                common.bprint(line, color='yellow', display_method=11, indent=11)
                                 tmp_dic = {}
                                 break
 
@@ -691,8 +689,8 @@ def parse_project_proportion_file(project_proportion_file, project_list=[]):
                             break
 
                     if not tmp_dic:
-                        common.print_warning('*Warning*: Invalid line on "' + str(project_proportion_file) + '", ignore.')
-                        common.print_warning('           ' + str(line))
+                        common.bprint('Invalid line on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                        common.bprint(line, color='yellow', display_method=1, indent=11)
                         continue
                     else:
                         sum_proportion = sum(list(tmp_dic.values()))
@@ -700,13 +698,13 @@ def parse_project_proportion_file(project_proportion_file, project_list=[]):
                         if sum_proportion == 1.0:
                             project_proportion_dic[item] = tmp_dic
                         else:
-                            common.print_warning('*Warning*: Invalid line on "' + str(project_proportion_file) + '", ignore.')
-                            common.print_warning('           ' + str(line))
+                            common.bprint('Invalid line on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                            common.bprint(line, color='yellow', display_method=1, indent=11)
                             continue
 
                 else:
-                    common.print_warning('*Warning*: Invalid line on "' + str(project_proportion_file) + '", ignore.')
-                    common.print_warning('           ' + str(line))
+                    common.bprint('Invalid line on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                    common.bprint(line, color='yellow', display_method=1, indent=11)
                     continue
 
     return project_proportion_dic

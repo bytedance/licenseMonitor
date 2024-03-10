@@ -1,18 +1,10 @@
-#!/ic/software/tools/python3/3.8.8/bin/python3
 # -*- coding: utf-8 -*-
-################################
-# File Name   : update_project_execute_host_with_lsf.py
-# Author      : liyanqing.1987
-# Created On  : 2023-12-18 11:52:28
-# Description :
-################################
 import os
 import re
 import sys
+import copy
 import datetime
 import argparse
-import stat
-import copy
 
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
@@ -40,7 +32,7 @@ def read_args():
 
     # Check original args.project_execute_host_file exists or not.
     if args.project_execute_host_file and (not os.path.exists(args.project_execute_host_file)):
-        common.print_error('*Error*: "' + str(args.project_execute_host_file) + '": No such file.')
+        common.bprint('"' + str(args.project_execute_host_file) + '": No such file.', level='Error')
         sys.exit(1)
 
     return args.project_execute_host_file, args.output_file
@@ -54,7 +46,6 @@ class UpdateProjectExecuteHostWithLsf():
     def __init__(self, orig_project_execute_host_file, output_file):
         self.orig_project_execute_host_file = orig_project_execute_host_file
         self.output_file = output_file
-
         self.project_list = self.get_project_list()
 
     def get_project_list(self):
@@ -167,7 +158,7 @@ class UpdateProjectExecuteHostWithLsf():
 
                     OF.write(str(output_string) + '\n')
 
-            os.chmod(self.output_file, stat.S_IRWXU+stat.S_IRWXG+stat.S_IRWXO)
+            os.chmod(self.output_file, 0o777)
 
     def run(self):
         """
@@ -177,27 +168,27 @@ class UpdateProjectExecuteHostWithLsf():
         queue_list = common_lsf.get_queue_list()
 
         if not queue_list:
-            common.print_error('*Error*: Not find any LSF queue information.')
+            common.bprint('Not find any LSF queue information.', level='Error')
             sys.exit(1)
 
         # Get queue-project relationship.
         queue_project_dic = self.get_queue_project_relationship(queue_list)
 
         if not queue_project_dic:
-            common.print_error('*Error*: Not find any valid queue-project relationship.')
+            common.bprint('Not find any valid queue-project relationship.', level='Error')
             sys.exit(1)
 
         # Get execute_host-project relationship.
         host_queue_dic = common_lsf.get_host_queue_info()
 
         if not host_queue_dic:
-            common.print_error('*Error*: Not find any valid LSF host-queue relationship.')
+            common.bprint('Not find any valid LSF host-queue relationship.', level='Error')
             sys.exit(1)
 
         project_execute_host_dic = self.get_project_execute_host_info(queue_project_dic, host_queue_dic)
 
         if not project_execute_host_dic:
-            common.print_error('*Error*: Not find any valid execute_host-project relationship.')
+            common.bprint('Not find any valid execute_host-project relationship.', level='Error')
             sys.exit(1)
 
         # Get origianl execute_host-project relationship.

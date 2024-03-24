@@ -33,7 +33,7 @@ def read_args():
 
 class Patch():
     def __init__(self, patch_path):
-        self.install_path = os.path.realpath(os.environ['LSFMONITOR_INSTALL_PATH'])
+        self.install_path = os.path.realpath(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
         self.patch_path = os.path.realpath(patch_path)
         self.ignore_py_list = ['config/config.py',]
 

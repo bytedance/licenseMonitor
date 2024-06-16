@@ -178,7 +178,7 @@ class MainWindow(QMainWindow):
         # Set size & position
         self.license_log_widget = QWidget()
         self.setCentralWidget(self.license_log_widget)
-        self.resize(800, 525)
+        common_pyqt5.auto_resize(self, 800, 525)
         common_pyqt5.center_window(self)
 
         self.license_log_frame = QFrame(self.license_log_widget)

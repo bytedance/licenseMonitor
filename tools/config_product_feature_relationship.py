@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
 
         # Show main window
         self.setWindowTitle('Config product-feature relationship')
-        self.resize(1000, 520)
+        common_pyqt5.auto_resize(self, 1000, 520)
         common_pyqt5.center_window(self)
 
     def gen_select_frame(self):

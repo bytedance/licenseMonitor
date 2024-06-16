@@ -30,7 +30,8 @@ if os.path.exists(local_config):
     import config
 
 os.environ['PYTHONUNBUFFERED'] = '1'
-VERSION = 'V1.3.1 (2024.03.06)'
+VERSION = 'V1.3.2'
+VERSION_DATE = '2024.06.14'
 USER = getpass.getuser()
 
 # Solve some unexpected warning message.
@@ -238,6 +239,26 @@ class MainWindow(QMainWindow):
 
         return vendor_daemon_list
 
+    def get_feature_and_user_list(self):
+        """
+        Get all features/users from self.license_dic.
+        """
+        feature_list = []
+        user_list = []
+
+        for license_server in self.license_dic.keys():
+            for vendor_daemon in self.license_dic[license_server]['vendor_daemon'].keys():
+                for feature in self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'].keys():
+                    feature_list.append(feature)
+
+                    for usage_dic in self.license_dic[license_server]['vendor_daemon'][vendor_daemon]['feature'][feature]['in_use_info']:
+                        user_list.append(usage_dic['user'])
+
+        feature_list = list(set(feature_list))
+        user_list = list(set(user_list))
+
+        return feature_list, user_list
+
     def parse_feature_product_filter_file(self, tab_name, filter_type, item_name):
         """
         Parse feature/product white/black filter file for UTILIZATION/COST tab, return feature/product list.
@@ -290,6 +311,9 @@ class MainWindow(QMainWindow):
 
         # Get License information.
         self.get_license_dic()
+        (self.feature_list, self.user_list) = self.get_feature_and_user_list()
+        self.update_product_feature_info()
+        self.product_list = self.get_product_list()
 
         # Generate the sub-tabs
         self.gen_server_tab()
@@ -303,7 +327,7 @@ class MainWindow(QMainWindow):
             self.gen_cost_tab()
 
         # Show main window
-        self.resize(1200, 580)
+        common_pyqt5.auto_resize(self, 1200, 580)
         self.setWindowTitle('licenseMonitor ' + str(VERSION))
         self.setWindowIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/monitor.ico'))
         common_pyqt5.center_window(self)
@@ -476,6 +500,20 @@ class MainWindow(QMainWindow):
                         for product in self.feature_product_dic[vendor_daemon][feature]:
                             self.product_feature_dic[vendor_daemon].setdefault(product, [])
                             self.product_feature_dic[vendor_daemon][product].append(feature)
+
+    def get_product_list(self):
+        """
+        Get all products from self.product_feature_dic.
+        """
+        product_list = []
+
+        for vendor_daemon in self.product_feature_dic.keys():
+            for product in self.product_feature_dic[vendor_daemon].keys():
+                product_list.append(product)
+
+        product_list = list(set(product_list))
+
+        return product_list
 
     def switch_product_on_utilization_dic(self, utilization_dic):
         """
@@ -660,7 +698,7 @@ class MainWindow(QMainWindow):
         """
         Show licenseMonitor version information.
         """
-        QMessageBox.about(self, 'licenseMonitor', 'Version: ' + str(VERSION) + '        ')
+        QMessageBox.about(self, 'licenseMonitor', 'Version: ' + str(VERSION) + ' (' + str(VERSION_DATE) + ')')
 
     def show_about(self):
         """
@@ -676,7 +714,7 @@ licenseMonitor is an open source software for EDA software license information d
 
     def set_common_checkbox_combo(self, checkbox_combo, item_list):
         """
-        Set (initialize) combo item.
+        Set (initialize) checkbox combo item.
         """
         checkbox_combo.clear()
 
@@ -688,6 +726,15 @@ licenseMonitor is an open source software for EDA software license information d
         for (i, qBox) in enumerate(checkbox_combo.checkBoxList):
             if (qBox.text() == 'ALL') and (qBox.isChecked() is False):
                 checkbox_combo.checkBoxList[i].setChecked(True)
+                break
+
+    def set_checkbox_combo_item_state(self, checkbox_combo, item, state=True):
+        """
+        Set checkbox combo items state to "True"(checked) or "False"(unchecked), default is "True"
+        """
+        for (i, qBox) in enumerate(checkbox_combo.checkBoxList):
+            if qBox.text() == item:
+                checkbox_combo.checkBoxList[i].setChecked(state)
                 break
 
 # For SERVER TAB (start) #
@@ -880,7 +927,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.feature_tab_show_combo = QComboBox(self.feature_tab_frame)
         self.set_feature_tab_show_combo()
-        self.feature_tab_show_combo.activated.connect(self.filter_feature_tab_license_feature)
+        self.feature_tab_show_combo.activated.connect(lambda: self.filter_feature_tab_license_feature())
 
         # License Server
         feature_tab_server_label = QLabel('Server', self.feature_tab_frame)
@@ -904,11 +951,14 @@ licenseMonitor is an open source software for EDA software license information d
         feature_tab_feature_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.feature_tab_feature_line = QLineEdit()
-        self.feature_tab_feature_line.returnPressed.connect(self.filter_feature_tab_license_feature)
+        self.feature_tab_feature_line.returnPressed.connect(lambda: self.filter_feature_tab_license_feature())
+
+        feature_tab_feature_line_completer = common_pyqt5.get_completer(self.feature_list)
+        self.feature_tab_feature_line.setCompleter(feature_tab_feature_line_completer)
 
         # Filter Button
         feature_tab_check_button = QPushButton('Check', self.feature_tab_frame)
-        feature_tab_check_button.clicked.connect(self.filter_feature_tab_license_feature)
+        feature_tab_check_button.clicked.connect(lambda: self.filter_feature_tab_license_feature())
 
         # Grid
         feature_tab_frame_grid = QGridLayout()
@@ -993,21 +1043,13 @@ licenseMonitor is an open source software for EDA software license information d
                 if in_use_num != '0':
                     # Reset self.usage_tab_server_combo on USAGE tab.
                     current_license_server = self.feature_tab_table.item(item.row(), 0).text().strip()
-                    license_server_list = self.get_license_server_list()
-                    license_server_list.remove(current_license_server)
-                    license_server_list.insert(0, 'ALL')
-                    license_server_list.insert(0, current_license_server)
-
-                    self.set_usage_tab_server_combo(license_server_list)
+                    self.set_usage_tab_server_combo()
+                    self.set_checkbox_combo_item_state(self.usage_tab_server_combo, current_license_server, state=True)
 
                     # Reset self.usage_tab_vendor_combo on USAGE tab.
                     current_vendor_daemon = self.feature_tab_table.item(item.row(), 1).text().strip()
-                    vendor_daemon_list = self.get_vendor_daemon_list()
-                    vendor_daemon_list.remove(current_vendor_daemon)
-                    vendor_daemon_list.insert(0, 'ALL')
-                    vendor_daemon_list.insert(0, current_vendor_daemon)
-
-                    self.set_usage_tab_vendor_combo(vendor_daemon_list)
+                    self.set_usage_tab_vendor_combo()
+                    self.set_checkbox_combo_item_state(self.usage_tab_vendor_combo, current_vendor_daemon, state=True)
 
                     # Reset self.usage_tab_feature_line on USAGE tab.
                     current_feature = self.feature_tab_table.item(item.row(), 2).text().strip()
@@ -1124,7 +1166,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.expires_tab_show_combo = QComboBox(self.expires_tab_frame)
         self.set_expires_tab_show_combo()
-        self.expires_tab_show_combo.activated.connect(self.filter_expires_tab_license_feature)
+        self.expires_tab_show_combo.activated.connect(lambda: self.filter_expires_tab_license_feature())
 
         # License Server
         expires_tab_server_label = QLabel('Server', self.expires_tab_frame)
@@ -1148,11 +1190,14 @@ licenseMonitor is an open source software for EDA software license information d
         expires_tab_feature_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.expires_tab_feature_line = QLineEdit()
-        self.expires_tab_feature_line.returnPressed.connect(self.filter_expires_tab_license_feature)
+        self.expires_tab_feature_line.returnPressed.connect(lambda: self.filter_expires_tab_license_feature())
+
+        expires_tab_feature_line_completer = common_pyqt5.get_completer(self.feature_list)
+        self.expires_tab_feature_line.setCompleter(expires_tab_feature_line_completer)
 
         # Filter Button
         expires_tab_check_button = QPushButton('Check', self.expires_tab_frame)
-        expires_tab_check_button.clicked.connect(self.filter_expires_tab_license_feature)
+        expires_tab_check_button.clicked.connect(lambda: self.filter_expires_tab_license_feature())
 
         # Grid
         expires_tab_frame_grid = QGridLayout()
@@ -1432,7 +1477,10 @@ licenseMonitor is an open source software for EDA software license information d
         usage_tab_feature_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.usage_tab_feature_line = QLineEdit()
-        self.usage_tab_feature_line.returnPressed.connect(self.filter_usage_tab_license_feature)
+        self.usage_tab_feature_line.returnPressed.connect(lambda: self.filter_usage_tab_license_feature())
+
+        usage_tab_feature_line_completer = common_pyqt5.get_completer(self.feature_list)
+        self.usage_tab_feature_line.setCompleter(usage_tab_feature_line_completer)
 
         # Submit Host
         usage_tab_submit_host_label = QLabel('Submit_Host', self.usage_tab_frame)
@@ -1441,7 +1489,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.usage_tab_submit_host_combo = QComboBox(self.usage_tab_frame)
         self.set_usage_tab_submit_host_combo()
-        self.usage_tab_submit_host_combo.activated.connect(self.filter_usage_tab_license_feature)
+        self.usage_tab_submit_host_combo.activated.connect(lambda: self.filter_usage_tab_license_feature())
 
         # Execute Host
         usage_tab_execute_host_label = QLabel('Execute_Host', self.usage_tab_frame)
@@ -1450,7 +1498,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.usage_tab_execute_host_combo = QComboBox(self.usage_tab_frame)
         self.set_usage_tab_execute_host_combo()
-        self.usage_tab_execute_host_combo.activated.connect(self.filter_usage_tab_license_feature)
+        self.usage_tab_execute_host_combo.activated.connect(lambda: self.filter_usage_tab_license_feature())
 
         # User
         usage_tab_user_label = QLabel('User', self.usage_tab_frame)
@@ -1458,11 +1506,14 @@ licenseMonitor is an open source software for EDA software license information d
         usage_tab_user_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.usage_tab_user_line = QLineEdit()
-        self.usage_tab_user_line.returnPressed.connect(self.filter_usage_tab_license_feature)
+        self.usage_tab_user_line.returnPressed.connect(lambda: self.filter_usage_tab_license_feature())
+
+        usage_tab_user_line_completer = common_pyqt5.get_completer(self.user_list)
+        self.usage_tab_user_line.setCompleter(usage_tab_user_line_completer)
 
         # Fileter
         usage_tab_check_button = QPushButton('Check', self.usage_tab_frame)
-        usage_tab_check_button.clicked.connect(self.filter_usage_tab_license_feature)
+        usage_tab_check_button.clicked.connect(lambda: self.filter_usage_tab_license_feature())
 
         # Grid
         usage_tab_frame_grid = QGridLayout()
@@ -1730,6 +1781,9 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.curve_tab_feature_line = QLineEdit()
         self.curve_tab_feature_line.returnPressed.connect(self.filter_curve_tab)
+
+        curve_tab_feature_line_completer = common_pyqt5.get_completer(self.feature_list)
+        self.curve_tab_feature_line.setCompleter(curve_tab_feature_line_completer)
 
         # Check button
         curve_tab_check_button = QPushButton('Check', self.curve_tab_frame0)
@@ -2202,6 +2256,9 @@ licenseMonitor is an open source software for EDA software license information d
         self.utilization_tab_feature_line = QLineEdit()
         self.utilization_tab_feature_line.returnPressed.connect(self.filter_utilization_tab)
 
+        utilization_tab_feature_line_completer = common_pyqt5.get_completer(self.feature_list)
+        self.utilization_tab_feature_line.setCompleter(utilization_tab_feature_line_completer)
+
         # Check button
         utilization_tab_check_button = QPushButton('Check', self.utilization_tab_frame0)
         utilization_tab_check_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
@@ -2236,6 +2293,9 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.utilization_tab_product_line = QLineEdit()
         self.utilization_tab_product_line.returnPressed.connect(self.filter_utilization_tab)
+
+        utilization_tab_product_line_completer = common_pyqt5.get_completer(self.product_list)
+        self.utilization_tab_product_line.setCompleter(utilization_tab_product_line_completer)
 
         # Export button
         utilization_tab_export_button = QPushButton('Export', self.utilization_tab_frame0)
@@ -2719,6 +2779,9 @@ licenseMonitor is an open source software for EDA software license information d
         self.cost_tab_feature_line = QLineEdit()
         self.cost_tab_feature_line.returnPressed.connect(self.filter_cost_tab)
 
+        cost_tab_feature_line_completer = common_pyqt5.get_completer(self.feature_list)
+        self.cost_tab_feature_line.setCompleter(cost_tab_feature_line_completer)
+
         # Check button
         cost_tab_check_button = QPushButton('Check', self.cost_tab_frame0)
         cost_tab_check_button.setStyleSheet('''QPushButton:hover{background:rgb(170, 255, 127);}''')
@@ -2753,6 +2816,9 @@ licenseMonitor is an open source software for EDA software license information d
 
         self.cost_tab_product_line = QLineEdit()
         self.cost_tab_product_line.returnPressed.connect(self.filter_cost_tab)
+
+        cost_tab_product_line_completer = common_pyqt5.get_completer(self.product_list)
+        self.cost_tab_product_line.setCompleter(cost_tab_product_line_completer)
 
         # Export button
         cost_tab_export_button = QPushButton('Export', self.cost_tab_frame0)
@@ -3186,29 +3252,30 @@ licenseMonitor is an open source software for EDA software license information d
         current_time_string = re.sub('-', '', current_time)
         current_time_string = re.sub(':', '', current_time_string)
         current_time_string = re.sub(' ', '_', current_time_string)
-        default_output_file = './licenseMonitor_' + str(table_type) + '_' + str(current_time_string) + '.xlsx'
-        (output_file, output_file_type) = QFileDialog.getSaveFileName(self, 'Export ' + str(table_type) + ' table', default_output_file, 'Excel (*.xlsx)')
+        default_output_file = './licenseMonitor_' + str(table_type) + '_' + str(current_time_string) + '.csv'
+        (output_file, output_file_type) = QFileDialog.getSaveFileName(self, 'Export ' + str(table_type) + ' table', default_output_file, 'CSV Files (*.csv)')
 
         if output_file:
             # Get table content.
-            table_info_list = []
-            table_info_list.append(title_list)
+            content_dic = {}
+            row_num = table_item.rowCount()
+            column_num = table_item.columnCount()
 
-            for row in range(table_item.rowCount()):
-                row_list = []
+            for column in range(column_num):
+                column_list = []
 
-                for column in range(table_item.columnCount()):
+                for row in range(row_num):
                     if table_item.item(row, column):
-                        row_list.append(table_item.item(row, column).text())
+                        column_list.append(table_item.item(row, column).text())
                     else:
-                        row_list.append('')
+                        column_list.append('')
 
-                table_info_list.append(row_list)
+                content_dic.setdefault(title_list[column], column_list)
 
-            # Write excel
-            common.bprint('Write ' + str(table_type) + ' table into "' + str(output_file) + '"', date_format='%Y-%m-%d %H:%M:%S')
+            # Write csv
+            common.bprint('Writing ' + str(table_type) + ' table into "' + str(output_file) + '" ...', date_format='%Y-%m-%d %H:%M:%S')
 
-            common.write_excel(excel_file=output_file, contents_list=table_info_list, specified_sheet_name=table_type)
+            common.write_csv(csv_file=output_file, content_dic=content_dic)
 # Export table (end) #
 
     def closeEvent(self, QCloseEvent):

@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
 
         # Show main window
         self.setWindowTitle('View product-feature relationship')
-        self.resize(1000, 520)
+        common_pyqt5.auto_resize(self, 1000, 520)
         common_pyqt5.center_window(self)
 
     def gen_product_feature_frame(self):

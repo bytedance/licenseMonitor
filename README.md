@@ -1,4 +1,4 @@
-# licenseMonitor V1.3.1
+# licenseMonitor V1.3.2
 
 ## Update history
 ***
@@ -17,6 +17,7 @@
 |         |           | Add license log search function on UTILIZATION/COST tabs.        |
 |         |           | Add product fast fuzzy search function on UTILIZATION/COST tabs. |
 |         |           | Add tools tools/*.                                               |
+| V1.3.2  | (2024.06) | Replace export file from excel to csv file.                      |
 
 
 ## Introduction

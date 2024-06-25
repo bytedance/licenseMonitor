@@ -31,7 +31,7 @@ if os.path.exists(local_config):
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 VERSION = 'V1.3.2'
-VERSION_DATE = '2024.06.14'
+VERSION_DATE = '2024.06.25'
 USER = getpass.getuser()
 
 # Solve some unexpected warning message.

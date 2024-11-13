@@ -9,6 +9,7 @@ import yaml
 import getpass
 import datetime
 import argparse
+import qdarkstyle
 
 from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QAction, qApp, QTabWidget, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QPushButton, QLabel, QMessageBox, QLineEdit, QComboBox, QHeaderView, QDateEdit, QFileDialog, QMenu
 from PyQt5.QtGui import QIcon, QBrush, QFont
@@ -19,7 +20,6 @@ from common import common
 from common import common_pyqt5
 from common import common_license
 from common import common_sqlite3
-from config import config
 
 # Import local config file if exists.
 local_config_dir = str(os.environ['HOME']) + '/.licenseMonitor/config'
@@ -28,10 +28,12 @@ local_config = str(local_config_dir) + '/config.py'
 if os.path.exists(local_config):
     sys.path.append(local_config_dir)
     import config
+else:
+    from config import config
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 VERSION = 'V1.3.2'
-VERSION_DATE = '2024.06.25'
+VERSION_DATE = '2024.10.08'
 USER = getpass.getuser()
 
 # Solve some unexpected warning message.
@@ -40,8 +42,7 @@ if 'XDG_RUNTIME_DIR' not in os.environ:
 
     if not os.path.exists(os.environ['XDG_RUNTIME_DIR']):
         os.makedirs(os.environ['XDG_RUNTIME_DIR'])
-
-    os.chmod(os.environ['XDG_RUNTIME_DIR'], 0o777)
+        os.chmod(os.environ['XDG_RUNTIME_DIR'], 0o777)
 
 
 def read_args():
@@ -60,6 +61,10 @@ def read_args():
                         default='FEATURE',
                         choices=['SERVER', 'FEATURE', 'EXPIRES', 'USAGE', 'UTILIZATION', 'COST'],
                         help='Specify current tab, default is "FEATURE" tab.')
+    parser.add_argument("-d", "--dark_mode",
+                        action='store_true',
+                        default=False,
+                        help='Enable dark mode on the main interface.')
 
     args = parser.parse_args()
 
@@ -71,14 +76,14 @@ def read_args():
     if args.user and (not args.tab):
         args.tab = 'USAGE'
 
-    return args.feature, args.user, args.tab
+    return args.feature, args.user, args.tab, args.dark_mode
 
 
 class MainWindow(QMainWindow):
     """
     Main window of licenseMonitor.
     """
-    def __init__(self, specified_feature, specified_user, specified_tab):
+    def __init__(self, specified_feature, specified_user, specified_tab, dark_mode):
         super().__init__()
 
         # Get administrator list, check admin permission.
@@ -94,6 +99,7 @@ class MainWindow(QMainWindow):
             self.administrator_list = []
 
         # Initialization for class variables.
+        self.dark_mode = dark_mode
         self.license_dic = {}
         self.license_dic_second = 0
         self.db_dic = {}
@@ -331,6 +337,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('licenseMonitor ' + str(VERSION))
         self.setWindowIcon(QIcon(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/data/pictures/monitor.ico'))
         common_pyqt5.center_window(self)
+
+        if self.dark_mode:
+            self.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
 
     def switch_tab(self, specified_tab):
         """
@@ -2108,6 +2117,10 @@ licenseMonitor is an open source software for EDA software license information d
         self.curve_tab_canvas = common_pyqt5.FigureCanvasQTAgg()
         self.curve_tab_toolbar = common_pyqt5.NavigationToolbar2QT(self.curve_tab_canvas, self)
 
+        if self.dark_mode:
+            fig = self.curve_tab_canvas.figure
+            fig.set_facecolor('#19232d')
+
         # self.curve_tab_frame1 - Grid
         curve_tab_frame1_grid = QGridLayout()
         curve_tab_frame1_grid.addWidget(self.curve_tab_toolbar, 0, 0)
@@ -2182,9 +2195,22 @@ licenseMonitor is an open source software for EDA software license information d
         fig.subplots_adjust(bottom=0.25)
         axes = fig.add_subplot(111)
         avg_in_use = round((sum(in_use_list)/len(in_use_list)), 1)
-        axes.set_title('Average Used : ' + str(avg_in_use))
-        axes.set_xlabel('Sample Time')
-        axes.set_ylabel('Num')
+
+        if self.dark_mode:
+            axes.set_facecolor('#19232d')
+
+            for spine in axes.spines.values():
+                spine.set_color('white')
+
+            axes.tick_params(axis='both', colors='white')
+            axes.set_title('Average Used : ' + str(avg_in_use), color='white')
+            axes.set_xlabel('Sample Time', color='white')
+            axes.set_ylabel('Num', color='white')
+        else:
+            axes.set_title('Average Used : ' + str(avg_in_use))
+            axes.set_xlabel('Sample Time')
+            axes.set_ylabel('Num')
+
         axes.plot(sample_time_list, issued_list, 'bo-', label='TOTAL', linewidth=0.1, markersize=0.1)
         axes.plot(sample_time_list, in_use_list, 'go-', label='IN_USE', linewidth=0.1, markersize=0.1)
         axes.fill_between(sample_time_list, 0, in_use_list, color='green', alpha=0.5)
@@ -2643,6 +2669,10 @@ licenseMonitor is an open source software for EDA software license information d
         self.utilization_tab_canvas = common_pyqt5.FigureCanvasQTAgg()
         self.utilization_tab_toolbar = common_pyqt5.NavigationToolbar2QT(self.utilization_tab_canvas, self)
 
+        if self.dark_mode:
+            fig = self.utilization_tab_canvas.figure
+            fig.set_facecolor('#19232d')
+
         # self.utilization_tab_frame1 - Grid
         utilization_tab_frame1_grid = QGridLayout()
         utilization_tab_frame1_grid.addWidget(self.utilization_tab_toolbar, 0, 0)
@@ -2711,14 +2741,32 @@ licenseMonitor is an open source software for EDA software license information d
         """
         fig.subplots_adjust(bottom=0.25)
         axes = fig.add_subplot(111)
-        axes.set_title('Average Utilization : ' + str(avg_utilization) + '%')
 
-        if self.enable_utilization_detail:
-            axes.set_xlabel('Sample Time')
+        if self.dark_mode:
+            axes.set_facecolor('#19232d')
+
+            for spine in axes.spines.values():
+                spine.set_color('white')
+
+            axes.tick_params(axis='both', colors='white')
+            axes.set_title('Average Utilization : ' + str(avg_utilization) + '%', color='white')
+
+            if self.enable_utilization_detail:
+                axes.set_xlabel('Sample Time', color='white')
+            else:
+                axes.set_xlabel('Sample Date', color='white')
+
+            axes.set_ylabel('Utilization (%)', color='white')
         else:
-            axes.set_xlabel('Sample Date')
+            axes.set_title('Average Utilization : ' + str(avg_utilization) + '%')
 
-        axes.set_ylabel('Utilization (%)')
+            if self.enable_utilization_detail:
+                axes.set_xlabel('Sample Time')
+            else:
+                axes.set_xlabel('Sample Date')
+
+            axes.set_ylabel('Utilization (%)')
+
         axes.plot(sample_date_list, utilization_list, 'ro-', label='UT', linewidth=0.1, markersize=0.1)
         axes.fill_between(sample_date_list, 0, utilization_list, color='red', alpha=0.5)
         axes.legend(loc='upper right')
@@ -3339,9 +3387,9 @@ class ShowLicenseLogInfo(QThread):
 # Main Function #
 #################
 def main():
-    (specified_feature, specified_user, specified_tab) = read_args()
+    (specified_feature, specified_user, specified_tab, dark_mode) = read_args()
     app = QApplication(sys.argv)
-    mw = MainWindow(specified_feature, specified_user, specified_tab)
+    mw = MainWindow(specified_feature, specified_user, specified_tab, dark_mode)
     mw.show()
     sys.exit(app.exec_())
 

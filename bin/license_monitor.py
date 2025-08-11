@@ -678,7 +678,7 @@ class MainWindow(QMainWindow):
         project_list_file = str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list'
 
         if os.path.exists(project_list_file):
-            self.project_list = common_license.parse_project_list_file(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list')
+            self.project_list = common.parse_project_list_file(str(os.environ['LICENSE_MONITOR_INSTALL_PATH']) + '/config/project/project_list')
 
         if self.enable_cost_others_project and ('others' not in self.project_list):
             self.project_list.append('others')
@@ -729,7 +729,7 @@ licenseMonitor is an open source software for EDA software license information d
 
         # Fill checkbox_combo.
         for item in item_list:
-            checkbox_combo.addCheckBoxItem(item)
+            checkbox_combo.addCheckBoxItem(item, update_width=True)
 
         # Set "ALL" as checked status.
         for (i, qBox) in enumerate(checkbox_combo.checkBoxList):
@@ -2211,7 +2211,7 @@ licenseMonitor is an open source software for EDA software license information d
             axes.set_xlabel('Sample Time')
             axes.set_ylabel('Num')
 
-        axes.plot(sample_time_list, issued_list, 'bo-', label='TOTAL', linewidth=0.1, markersize=0.1)
+        axes.plot(sample_time_list, issued_list, 'bo-', label='TOTAL', linewidth=0.3, markersize=0.1)
         axes.plot(sample_time_list, in_use_list, 'go-', label='IN_USE', linewidth=0.1, markersize=0.1)
         axes.fill_between(sample_time_list, 0, in_use_list, color='green', alpha=0.5)
         axes.legend(loc='upper right')
@@ -3133,7 +3133,7 @@ licenseMonitor is an open source software for EDA software license information d
         project_setting_db_path = str(config.db_path) + '/project_setting'
 
         if os.path.exists(project_setting_db_path):
-            project_setting_dic = common_license.parse_project_setting_db_path(project_setting_db_path)
+            project_setting_dic = common.parse_project_setting_db_path(project_setting_db_path)
         else:
             common.bprint('"' + str(project_setting_db_path) + '": No such directory.', date_format='%Y-%m-%d %H:%M:%S', level='Warning')
 

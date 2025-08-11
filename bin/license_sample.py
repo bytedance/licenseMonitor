@@ -18,7 +18,6 @@ sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
 from common import common_license
 from common import common_sqlite3
-from config import config
 
 # Import local config file if exists.
 local_config_dir = str(os.environ['HOME']) + '/.licenseMonitor/config'
@@ -27,6 +26,8 @@ local_config = str(local_config_dir) + '/config.py'
 if os.path.exists(local_config):
     sys.path.append(local_config_dir)
     import config
+else:
+    from config import config
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 
@@ -138,7 +139,7 @@ class Sampling:
 
         self.create_db_path(project_setting_db_path)
 
-        project_setting_dic = common_license.parse_project_setting_db_path(project_setting_db_path)
+        project_setting_dic = common.parse_project_setting_db_path(project_setting_db_path)
 
         if not project_setting_dic:
             copy_mark = True
@@ -147,10 +148,10 @@ class Sampling:
             latest_create_time = create_time_list[-1]
 
             # Get project_list/project_submit_host/project_execute_host/project_user content on config directory.
-            config_project_list = common_license.parse_project_list_file(project_list_file)
-            config_project_submit_host_dic = common_license.parse_project_proportion_file(project_submit_host_file, config_project_list)
-            config_project_execute_host_dic = common_license.parse_project_proportion_file(project_execute_host_file, config_project_list)
-            config_project_user_dic = common_license.parse_project_proportion_file(project_user_file, config_project_list)
+            config_project_list = common.parse_project_list_file(project_list_file)
+            config_project_submit_host_dic = common.parse_project_proportion_file(project_submit_host_file, config_project_list)
+            config_project_execute_host_dic = common.parse_project_proportion_file(project_execute_host_file, config_project_list)
+            config_project_user_dic = common.parse_project_proportion_file(project_user_file, config_project_list)
 
             # Compare latest db_path setting and current config setting.
             if (project_setting_dic[latest_create_time]['project_list'] != config_project_list) or (project_setting_dic[latest_create_time]['project_submit_host'] != config_project_submit_host_dic) or (project_setting_dic[latest_create_time]['project_execute_host'] != config_project_execute_host_dic) or (project_setting_dic[latest_create_time]['project_user'] != config_project_user_dic):

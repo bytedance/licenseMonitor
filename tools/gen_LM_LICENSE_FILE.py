@@ -10,7 +10,16 @@ os.environ['PYTHONUNBUFFERED'] = '1'
 sys.path.insert(0, os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
 from common import common_license
-from config import config
+
+# Import local config file if exists.
+local_config_dir = str(os.environ['HOME']) + '/.licenseMonitor/config'
+local_config = str(local_config_dir) + '/config.py'
+
+if os.path.exists(local_config):
+    sys.path.append(local_config_dir)
+    import config
+else:
+    from config import config
 
 
 def read_args():
@@ -39,7 +48,7 @@ def read_args():
 
 def get_LM_LICENSE_FILE_setting(module_files_dir_list):
     """
-    Parse all fild on module files directory, get all "\d+@\S+" format string, and save them into LM_LICENSE_FILE_list.
+    Parse all fild on module files directory, get license server format string, and save them into LM_LICENSE_FILE_list.
     """
     LM_LICENSE_FILE_list = []
 
@@ -63,6 +72,17 @@ def get_LM_LICENSE_FILE_setting(module_files_dir_list):
                                 print('    Find ' + str(license_server))
                                 if license_server not in LM_LICENSE_FILE_list:
                                     LM_LICENSE_FILE_list.append(license_server)
+
+    # Remove excluded license servers.
+    if config.excluded_license_servers:
+        print('')
+        print('>>> Remove excluded license servers ...')
+        excluded_license_server_list = config.excluded_license_servers.split()
+
+        for excluded_license_server in excluded_license_server_list:
+            if excluded_license_server in LM_LICENSE_FILE_list:
+                print('    Remove "' + str(excluded_license_server) + '"')
+                LM_LICENSE_FILE_list.remove(excluded_license_server)
 
     if not LM_LICENSE_FILE_list:
         common.bprint('Not get any valid LM_LICENSE_FILE setting.', level='Warning')

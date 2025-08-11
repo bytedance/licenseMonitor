@@ -9,7 +9,6 @@ import argparse
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
 from common import common_lsf
-from common import common_license
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -192,7 +191,7 @@ class UpdateProjectExecuteHostWithLsf():
             sys.exit(1)
 
         # Get origianl execute_host-project relationship.
-        orig_project_execute_host_dic = common_license.parse_project_proportion_file(self.orig_project_execute_host_file)
+        orig_project_execute_host_dic = common.parse_project_proportion_file(self.orig_project_execute_host_file)
 
         # Replace orig_project_execute_host_dic with project_execute_host_dic.
         new_project_execute_host_dic = copy.deepcopy(project_execute_host_dic)

@@ -10,8 +10,17 @@ import datetime
 sys.path.append(os.environ['LICENSE_MONITOR_INSTALL_PATH'])
 from common import common
 from common import common_license
-from config import config
 from tools import get_product_feature_relationship
+
+# Import local config file if exists.
+local_config_dir = str(os.environ['HOME']) + '/.licenseMonitor/config'
+local_config = str(local_config_dir) + '/config.py'
+
+if os.path.exists(local_config):
+    sys.path.append(local_config_dir)
+    import config
+else:
+    from config import config
 
 os.environ['PYTHONUNBUFFERED'] = '1'
 CURRENT_TIME = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')

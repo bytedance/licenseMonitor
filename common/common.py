@@ -1,3 +1,4 @@
+import os
 import re
 import pandas
 import socket
@@ -359,3 +360,121 @@ def ssh_client(host_name='', port=22, user_name=getpass.getuser(), password='', 
         client.close()
 
     return stdout_list
+
+
+def parse_project_list_file(project_list_file):
+    """
+    Parse project_list_file and return list "project_list".
+    """
+    project_list = []
+
+    if os.path.exists(project_list_file):
+        with open(project_list_file, 'r') as PLF:
+            for line in PLF.readlines():
+                line = line.strip()
+
+                if re.match(r'^\s*#.*$', line) or re.match(r'^\s*$', line):
+                    continue
+                else:
+                    if line not in project_list:
+                        project_list.append(line)
+
+    return project_list
+
+
+def parse_project_proportion_file(project_proportion_file, project_list=[]):
+    """
+    Parse project_*_file and return dictory "project_proportion_dic".
+    """
+    project_proportion_dic = {}
+
+    if project_proportion_file and os.path.exists(project_proportion_file):
+        with open(project_proportion_file, 'r') as PPF:
+            for line in PPF.readlines():
+                line = line.strip()
+
+                if re.match(r'^\s*#.*$', line) or re.match(r'^\s*$', line):
+                    continue
+                elif re.match(r'^(\S+)\s*:\s*(\S+)$', line):
+                    my_match = re.match(r'^(\S+)\s*:\s*(\S+)$', line)
+                    item = my_match.group(1)
+                    project = my_match.group(2)
+
+                    if item in project_proportion_dic.keys():
+                        bprint('"' + str(item) + '": repeated item on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                        continue
+                    else:
+                        project_proportion_dic[item] = {project: 1}
+                elif re.match(r'^(\S+)\s*:\s*(.+)$', line):
+                    my_match = re.match(r'^(\S+)\s*:\s*(.+)$', line)
+                    item = my_match.group(1)
+                    project_string = my_match.group(2)
+                    tmp_dic = {}
+
+                    for project_setting in project_string.split():
+                        if re.match(r'^(\S+)\((0.\d+)\)$', project_setting):
+                            my_match = re.match(r'^(\S+)\((0.\d+)\)$', project_setting)
+                            project = my_match.group(1)
+                            project_proportion = my_match.group(2)
+
+                            if project_list and (project not in project_list):
+                                bprint('"' + str(project) + '": Invalid project on "' + str(project_proportion_file) + '", not on project_list.', level='Warning')
+                                bprint(line, color='yellow', display_method=1, indent=11)
+                                tmp_dic = {}
+                                break
+
+                            if project in tmp_dic.keys():
+                                bprint('"' + str(project) + '": Repeated project on "' + str(project_proportion_file) + '".', level='Warning')
+                                bprint(line, color='yellow', display_method=11, indent=11)
+                                tmp_dic = {}
+                                break
+
+                            tmp_dic[project] = float(project_proportion)
+                        else:
+                            tmp_dic = {}
+                            break
+
+                    if not tmp_dic:
+                        bprint('Invalid line on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                        bprint(line, color='yellow', display_method=1, indent=11)
+                        continue
+                    else:
+                        sum_proportion = sum(list(tmp_dic.values()))
+
+                        if sum_proportion == 1.0:
+                            project_proportion_dic[item] = tmp_dic
+                        else:
+                            bprint('Invalid line on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                            bprint(line, color='yellow', display_method=1, indent=11)
+                            continue
+
+                else:
+                    bprint('Invalid line on "' + str(project_proportion_file) + '", ignore.', level='Warning')
+                    bprint(line, color='yellow', display_method=1, indent=11)
+                    continue
+
+    return project_proportion_dic
+
+
+def parse_project_setting_db_path(db_path):
+    """
+    Parse project_setting db_path, and get project_list/project_submit_host/project_execute_host/project_user related settings.
+    """
+    project_setting_dic = {}
+    valid_item_list = ['project_list', 'project_submit_host', 'project_execute_host', 'project_user']
+
+    for create_time in os.listdir(db_path):
+        create_time_path = str(db_path) + '/' + str(create_time)
+
+        if os.path.isdir(create_time_path) and re.match(r'^\d{14}$', create_time):
+            for item_name in os.listdir(create_time_path):
+                if item_name in valid_item_list:
+                    if item_name == 'project_list':
+                        item_value = parse_project_list_file(str(create_time_path) + '/' + str(item_name))
+                    else:
+                        item_value = parse_project_proportion_file(str(create_time_path) + '/' + str(item_name))
+
+                    project_setting_dic.setdefault(create_time, {})
+                    project_setting_dic[create_time].setdefault(item_name, item_value)
+
+    return project_setting_dic
